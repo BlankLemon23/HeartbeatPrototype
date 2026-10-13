@@ -2,3 +2,4 @@ build/
 out/
 .vs/
 *.user
+/Project1/**/x64/
