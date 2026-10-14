@@ -1,20 +1,20 @@
 #include "Map.hpp"
 
-std::string classifyCell(const std::vector<std::string>& map, int x, int y) {
+CellType classifyCell(const std::vector<std::string>& map, int x, int y) {
 	if (x < 0 || x >= map.size()) {
-		return "out of bounds";
+		return CellType::OutOfBounds;
 	}
 	else if (y < 0 || y >= map[x].size()) {
-		return "out of bounds";
+		return CellType::OutOfBounds;
 	}
 	else if (map[x][y] == '*') {
-		return "wall";
+		return CellType::Wall;
 	}
 	else if (map[x][y] == '.') {
-		return "space";
+		return CellType::Space;
 	}
 	else {
-		return "unknown";
+		return CellType::Unknown;
 	}
 
 }

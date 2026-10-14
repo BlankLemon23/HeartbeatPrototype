@@ -1,7 +1,11 @@
 #pragma once
 #include <string>
 #include <vector>
+enum class CellType {
+    OutOfBounds,
+    Wall,
+    Space,
+    Unknown
+};
 
-
-
-std::string classifyCell(const std::vector<std::string>& map, int x, int y);
+CellType classifyCell(const std::vector<std::string>& map, int x, int y);
