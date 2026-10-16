@@ -9,9 +9,12 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
-add_library(game_core STATIC game_core/Map.cpp)
+add_library(game_core STATIC game_core/Map.cpp game_core/Player.cpp)
 target_include_directories(game_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/game_core")
 target_compile_features(game_core PUBLIC cxx_std_17)
+if(MSVC)
+    target_compile_options(game_core PUBLIC /utf-8)
+endif()
 
 add_executable(game_desktop game_desktop/main.cpp)
 target_link_libraries(game_desktop PRIVATE game_core raylib)

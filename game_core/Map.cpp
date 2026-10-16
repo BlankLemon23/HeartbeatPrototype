@@ -1,16 +1,16 @@
 #include "Map.hpp"
 
-CellType classifyCell(const std::vector<std::string>& map, int x, int y) {
-	if (x < 0 || x >= map.size()) {
+CellType classifyCell(const std::vector<std::string>& map, int row, int column) {
+	if (row < 0 || row >= map.size()) {
 		return CellType::OutOfBounds;
 	}
-	else if (y < 0 || y >= map[x].size()) {
+	else if (column < 0 || column >= map[row].size()) {
 		return CellType::OutOfBounds;
 	}
-	else if (map[x][y] == '*') {
+	else if (map[row][column] == '*') {
 		return CellType::Wall;
 	}
-	else if (map[x][y] == '.') {
+	else if (map[row][column] == '.') {
 		return CellType::Space;
 	}
 	else {

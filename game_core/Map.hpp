@@ -8,4 +8,4 @@ enum class CellType {
     Unknown
 };
 
-CellType classifyCell(const std::vector<std::string>& map, int x, int y);
+CellType classifyCell(const std::vector<std::string>& map, int row, int column);
