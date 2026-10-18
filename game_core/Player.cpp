@@ -1,11 +1,12 @@
-#include "Map.hpp"
 #include "Player.hpp"
+#include "Map.hpp"
+
 
 bool operator == (const Position& lhs, const Position& rhs) {
 	return lhs.row == rhs.row && lhs.column == rhs.column;
-}//lhs和rhs是常用的命名方式，表示左值和右值 left hand side,right hand side
+}//lhs和rhs是常用的命名方式，表示左侧和右侧操作数（left-hand side / right-hand side），不是左值和右值分类
 
-bool Player::tryMove(Direction direction, const std::vector<std::string>& map) {
+bool Player::tryMove(Direction direction, const Map& map) {
 	Position newPosition = position_;
 	switch (direction) {
 	case Direction::UP:
@@ -23,7 +24,7 @@ bool Player::tryMove(Direction direction, const std::vector<std::string>& map) {
 	default:
 		return false;
 	}
-	if (classifyCell(map, newPosition.row, newPosition.column) == CellType::Space) {
+	if (map.classifyCell(newPosition.row, newPosition.column) == CellType::Space) {
 		position_ = newPosition;
 		return true;
 	}
@@ -35,4 +36,9 @@ Player::Player(Position startPosition) : position_(startPosition) {
 
 Position Player::getPosition() const {
 	return position_;
+}
+
+void Player::setPosition(Position newPosition)
+{
+	position_ = newPosition;
 }
