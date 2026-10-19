@@ -48,11 +48,17 @@ int main() {
     InitWindow(width, height, title.c_str());
     SetTargetFPS(60);
 	const double manualScanIntervalSeconds = 5.0;
-	ScanController scanController(false, 0, 5);
+	const double highHealthScanIntervalSeconds = 3.0;
+	const double mediumHealthScanIntervalSeconds = 2.0;
+	const double lowHealthScanIntervalSeconds = 1.2;
+
+	ScanController scanController(0, 5);
+
     while (true) {
 		if (WindowShouldClose()) {
 			break;
 		}
+
 
 		scanController.updateScanTime(GetFrameTime());
 
@@ -69,9 +75,18 @@ int main() {
 			player.tryMove(Direction::LEFT, map);
 		}
 
-		if (IsKeyPressed(KEY_SPACE) && scanController.canScanManually()) {
-			scanController.scan(player.getPosition(), map, manualScanIntervalSeconds);
+		if (IsKeyPressed(KEY_B)) {
+			player.setInBattle(!player.isInBattle()); //调试用，按B键切换战斗状态
 		}
+
+		if (IsKeyPressed(KEY_SPACE)) {
+			scanController.tryScanManually(player, map, manualScanIntervalSeconds);
+		}
+
+		scanController.updateBattleScan(player, map,
+			highHealthScanIntervalSeconds, mediumHealthScanIntervalSeconds, lowHealthScanIntervalSeconds);
+
+
 
 		BeginDrawing();
 

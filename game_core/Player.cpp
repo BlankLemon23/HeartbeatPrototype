@@ -1,5 +1,7 @@
 #include "Player.hpp"
 #include "Map.hpp"
+#include <algorithm>
+#include <stdexcept>
 
 
 bool operator == (const Position& lhs, const Position& rhs) {
@@ -31,8 +33,29 @@ bool Player::tryMove(Direction direction, const Map& map) {
 	return false;
 }
 
-Player::Player(Position startPosition) : position_(startPosition) {
-}//初始化列表 不用让 position_ = startPosition
+Player::Player(Position startPosition, int maxHealth)
+	: position_(startPosition), maxHealth_(maxHealth), health_(maxHealth) {
+	if (maxHealth <= 0) {
+		throw std::invalid_argument("maxHealth must be positive");
+	}
+}
+
+HpLevel Player::getHpLevel() const
+{
+	if (health_ == 0)
+	{
+		return HpLevel::Dead;
+	}
+	if (health_ <= maxHealth_ / 5)
+	{
+		return HpLevel::Low;
+	}
+	if (health_ <= maxHealth_ / 5)
+	{
+		return HpLevel::Medium;
+	}
+	return HpLevel::High;
+}
 
 Position Player::getPosition() const {
 	return position_;
@@ -41,4 +64,37 @@ Position Player::getPosition() const {
 void Player::setPosition(Position newPosition)
 {
 	position_ = newPosition;
+}
+
+bool Player::isInBattle() const {
+	return isInBattle_;
+}
+
+void Player::setInBattle(bool isInBattle) {
+	isInBattle_ = isInBattle;
+}
+
+bool Player::wasInBattle() const
+{
+	return wasInBattle_;
+}
+
+void Player::setWasInBattle(bool wasInBattle)
+{
+	wasInBattle_ = wasInBattle;
+}
+
+int Player::getHealth() const
+{
+	return health_;
+}
+
+int Player::getMaxHealth() const
+{
+	return maxHealth_;
+}
+
+void Player::setHealth(int health)
+{
+	health_ = std::clamp(health, 0, maxHealth_);//把 health 的值约束在 [0, maxHealth_] 之间，结果赋给 health_。
 }
