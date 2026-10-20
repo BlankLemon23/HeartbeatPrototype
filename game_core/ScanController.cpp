@@ -4,7 +4,7 @@
 #include <limits>
 #include <stdexcept>
 
-ScanController::ScanController(double initialScanCooldownSeconds,double ScanRadius) : scanCooldownRemainingSeconds_(initialScanCooldownSeconds), scanRadius_(ScanRadius) {
+ScanController::ScanController(double initialScanCooldownSeconds, double scanRadiusCells) : scanCooldownRemainingSeconds_(initialScanCooldownSeconds), scanRadiusCells_(scanRadiusCells) {
 	
 }
 void ScanController::setScanCooldownRemainingSeconds(double remainingSeconds) {
@@ -33,7 +33,7 @@ bool ScanController::tryScanManually(const Player& player, Map& map, double scan
 	return true;
 }
 
-// 每帧调用一次，驱动「战斗中的自动扫描」。
+// 每帧调用一次，驱动「战斗中的自动扫描」。判断该帧是否需要扫描，用哪种扫描。
 //
 // 核心思路：用「本帧状态」和「上一帧状态」的差异，识别出玩家“刚进入战斗”的那一帧，
 // 从而只在那一帧立即扫描一次；血量降入更低档时也立即扫描一次；其余战斗帧按冷却间隔扫描。
@@ -48,12 +48,12 @@ bool ScanController::tryScanManually(const Player& player, Map& map, double scan
 //
 // 注：正因最后才写，所以“本帧是何时被改成 inBattle 的”并不重要——只要本帧
 // 调用本方法之前已经改好即可；写入结果要到下一帧才会被读到。
-void ScanController::updateBattleScan(Player& player, Map& map, double highIntervalSeconds, double mediumIntervalSeconds, double lowIntervalSeconds) {
+void ScanController::updateBattleAutoScan(Player& player, Map& map, const BattleScanConfig& config) {
 	const HpLevel currentLevel = player.getHpLevel();
 	if (player.isInBattle() && currentLevel != HpLevel::Dead) {
 
 		const double automaticIntervalSeconds = getAutoScanTimeAccordingToHpLevel(
-			currentLevel, highIntervalSeconds, mediumIntervalSeconds, lowIntervalSeconds);
+			currentLevel, config);
 
 		const bool enteredBattle = !player.wasInBattle();
 
@@ -95,18 +95,18 @@ bool ScanController::canScanAutomatically(const Player& player) const
 	return true;
 }
 
-double ScanController::getAutoScanTimeAccordingToHpLevel(HpLevel level, double highIntervalSeconds, double mediumIntervalSeconds, double lowIntervalSeconds) const
+double ScanController::getAutoScanTimeAccordingToHpLevel(HpLevel level, const BattleScanConfig& config) const
 {
 	switch (level)
 	{
 	case HpLevel::Dead:
 		return 0.0;
 	case HpLevel::Low:
-		return lowIntervalSeconds;
+		return config.lowHealthIntervalSeconds;
 	case HpLevel::Medium:
-		return mediumIntervalSeconds;
+		return config.mediumHealthIntervalSeconds;
 	case HpLevel::High:
-		return highIntervalSeconds;
+		return config.highHealthIntervalSeconds;
 	}
 	throw std::logic_error("unknown HP level");
 }
@@ -119,7 +119,7 @@ void ScanController::updateScanTime(double elapsedSeconds) {
 
 void ScanController::scan(const Player& player, Map& map,double scanIntervalSeconds) {
 	const Position playerPosition = player.getPosition();
-	double scanRadiusSquared = scanRadius_ * scanRadius_;
+	double scanRadiusSquared = scanRadiusCells_ * scanRadiusCells_;
 	double rowOffset = 0;
 	double columnOffset = 0;
 	const auto& cells = map.getMap();
@@ -139,7 +139,7 @@ void ScanController::scan(const Player& player, Map& map,double scanIntervalSeco
 	
 }
 
-bool ScanController::		 (Position playerPosition, Position targetPosition, const Map& map) {
+bool ScanController::ifPlayerCanSeeTheTarget(Position playerPosition, Position targetPosition, const Map& map) const {
 	if (playerPosition == targetPosition) {
 		return true;
 	}

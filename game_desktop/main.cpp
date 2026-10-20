@@ -52,9 +52,10 @@ int main() {
 
 	const double manualScanIntervalSeconds = 3.0;
 
-	const double highHealthScanIntervalSeconds = 3.0;
-	const double mediumHealthScanIntervalSeconds = 2.0;
-	const double lowHealthScanIntervalSeconds = 1.2;
+	BattleScanConfig battleScanConfig{};
+	battleScanConfig.highHealthIntervalSeconds = 3.0;
+	battleScanConfig.mediumHealthIntervalSeconds = 2.0;
+	battleScanConfig.lowHealthIntervalSeconds = 1.2;
 
 	const double moveIntervalSeconds = 0.5;
 
@@ -90,8 +91,7 @@ int main() {
 			scanController.tryScanManually(player, map, manualScanIntervalSeconds);
 		}
 
-		scanController.updateBattleScan(player, map,
-			highHealthScanIntervalSeconds, mediumHealthScanIntervalSeconds, lowHealthScanIntervalSeconds);
+		scanController.updateBattleAutoScan(player, map, battleScanConfig);
 
 
 

@@ -1,22 +1,31 @@
 #pragma once
 #include "Map.hpp"
 #include "Player.hpp"
+#include "Position.hpp"
 #include <optional>
-class ScanController{
+
+// Positive intervals in seconds; supplied by the caller as one configuration.
+struct BattleScanConfig {
+    double highHealthIntervalSeconds;
+    double mediumHealthIntervalSeconds;
+    double lowHealthIntervalSeconds;
+};
+
+class ScanController {
 public:
 	void updateScanTime(double elapsedSeconds);
-	void updateBattleScan(Player& player, Map& map, double highIntervalSeconds, double mediumIntervalSeconds, double lowIntervalSeconds);
-	ScanController(double initialScanCooldownSeconds,double ScanRadius);
+	void updateBattleAutoScan(Player& player, Map& map, const BattleScanConfig& config);
+	ScanController(double initialScanCooldownSeconds, double scanRadiusCells);
 	bool canScanManually(const Player& player) const;
 	bool tryScanManually(const Player& player, Map& map, double scanIntervalSeconds);
-	bool ifPlayerCanSeeTheTarget(Position playerPosition, Position targetPosition, const Map& map);
+	bool ifPlayerCanSeeTheTarget(Position playerPosition, Position targetPosition, const Map& map) const;
 private:
 	bool tryScanAutomatically(const Player& player, Map& map, double automaticIntervalSeconds);
 	bool canScanAutomatically(const Player& player) const;
-	double getAutoScanTimeAccordingToHpLevel(HpLevel level, double highIntervalSeconds, double mediumIntervalSeconds, double lowIntervalSeconds) const;
+	double getAutoScanTimeAccordingToHpLevel(HpLevel level, const BattleScanConfig& config) const;
 	void setScanCooldownRemainingSeconds(double remainingSeconds);
 	void scan(const Player& player, Map& map, double scanIntervalSeconds);
 	double scanCooldownRemainingSeconds_;
-	double scanRadius_;
-	std::optional<HpLevel> previousHpLevel_;// std::optional ÓÃÓÚ±íÊ¾¿ÉÄÜÃ»ÓĞÖµµÄÇé¿ö£¬previousHpLevel_ ¼ÇÂ¼ÉÏÒ»Ö¡µÄÑªÁ¿µÈ¼¶ µÚÒ»Ö¡¿ÉÄÜÃ»ÓĞÉÏÒ»µ²Î»
+	double scanRadiusCells_;
+	std::optional<HpLevel> previousHpLevel_;// std::optional ç”¨äºè¡¨ç¤ºå¯èƒ½æ²¡æœ‰å€¼çš„æƒ…å†µï¼ŒpreviousHpLevel_ è®°å½•ä¸Šä¸€å¸§çš„è¡€é‡ç­‰çº§ ç¬¬ä¸€å¸§å¯èƒ½æ²¡æœ‰ä¸Šä¸€æŒ¡ä½
 };

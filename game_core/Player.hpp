@@ -1,15 +1,6 @@
 #pragma once
-#include <string>
-#include <vector>
 #include "Map.hpp"
-
-struct Position
-{
-	int row;
-	int column;
-};
-
-bool operator == (const Position& lhs, const Position& rhs);
+#include "Position.hpp"
 
 // Keep levels ordered so a smaller value means a lower health band.
 enum class HpLevel
@@ -57,7 +48,7 @@ public:
 
 
 private:
-	double moveCooldownRemainingSeconds_ = 0;
+	double moveCooldownRemainingSeconds_ = 0.0;
 	Position position_;//成员变量用_结尾
 	bool isInBattle_ = false;
 	bool wasInBattle_ = false;
