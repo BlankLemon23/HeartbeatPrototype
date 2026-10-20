@@ -32,7 +32,9 @@ int main() {
 	"*............................*",
 	"******************************"
 		});
+
 	int maxColumns = 0;
+
 	for (int row = 0; row < map.getMap().size(); row++) {
 
 		if (map.getMap()[row].length() > maxColumns) {
@@ -47,10 +49,14 @@ int main() {
 
     InitWindow(width, height, title.c_str());
     SetTargetFPS(60);
-	const double manualScanIntervalSeconds = 5.0;
+
+	const double manualScanIntervalSeconds = 3.0;
+
 	const double highHealthScanIntervalSeconds = 3.0;
 	const double mediumHealthScanIntervalSeconds = 2.0;
 	const double lowHealthScanIntervalSeconds = 1.2;
+
+	const double moveIntervalSeconds = 0.5;
 
 	ScanController scanController(0, 5);
 
@@ -59,20 +65,21 @@ int main() {
 			break;
 		}
 
+		double elapsedSeconds = GetFrameTime();
+		scanController.updateScanTime(elapsedSeconds);
+		player.updateMoveCooldown(elapsedSeconds);
 
-		scanController.updateScanTime(GetFrameTime());
-
-		if (IsKeyPressed(KEY_RIGHT)) {
-			player.tryMove(Direction::RIGHT, map);
+		if (IsKeyDown(KEY_RIGHT)) {
+			player.tryMove(Direction::RIGHT, map, moveIntervalSeconds);
 		}
-		else if (IsKeyPressed(KEY_UP)) {
-			player.tryMove(Direction::UP, map);
+		else if (IsKeyDown(KEY_UP)) {
+			player.tryMove(Direction::UP, map, moveIntervalSeconds);
 		}
-		else if (IsKeyPressed(KEY_DOWN)) {
-			player.tryMove(Direction::DOWN, map);
+		else if (IsKeyDown(KEY_DOWN)) {
+			player.tryMove(Direction::DOWN, map, moveIntervalSeconds);
 		}
-		else if (IsKeyPressed(KEY_LEFT)) {
-			player.tryMove(Direction::LEFT, map);
+		else if (IsKeyDown(KEY_LEFT)) {
+			player.tryMove(Direction::LEFT, map, moveIntervalSeconds);
 		}
 
 		if (IsKeyPressed(KEY_B)) {

@@ -8,7 +8,12 @@ bool operator == (const Position& lhs, const Position& rhs) {
 	return lhs.row == rhs.row && lhs.column == rhs.column;
 }//lhs和rhs是常用的命名方式，表示左侧和右侧操作数（left-hand side / right-hand side），不是左值和右值分类
 
-bool Player::tryMove(Direction direction, const Map& map) {
+bool Player::tryMove(Direction direction, const Map& map, double moveIntervalSeconds) {
+	if (moveCooldownRemainingSeconds_ > 0) {
+		return false;
+	}
+
+
 	Position newPosition = position_;
 	switch (direction) {
 	case Direction::UP:
@@ -27,6 +32,7 @@ bool Player::tryMove(Direction direction, const Map& map) {
 		return false;
 	}
 	if (map.classifyCell(newPosition.row, newPosition.column) == CellType::Space) {
+		moveCooldownRemainingSeconds_ = moveIntervalSeconds; //撞墙不触发冷却，只有成功移动才触发冷却
 		position_ = newPosition;
 		return true;
 	}
@@ -50,7 +56,7 @@ HpLevel Player::getHpLevel() const
 	{
 		return HpLevel::Low;
 	}
-	if (health_ <= maxHealth_ / 5)
+	if (maxHealth_ / 5 < health_ && health_ <= 3 * maxHealth_ / 5)
 	{
 		return HpLevel::Medium;
 	}
@@ -97,4 +103,17 @@ int Player::getMaxHealth() const
 void Player::setHealth(int health)
 {
 	health_ = std::clamp(health, 0, maxHealth_);//把 health 的值约束在 [0, maxHealth_] 之间，结果赋给 health_。
+}
+
+
+double Player::getMoveCooldownRemainingSeconds() const
+{
+	return moveCooldownRemainingSeconds_;
+}
+
+void Player::updateMoveCooldown(double elapsedSeconds)
+{
+	if (moveCooldownRemainingSeconds_ > 0) {
+		moveCooldownRemainingSeconds_ = std::max(0.0, moveCooldownRemainingSeconds_ - elapsedSeconds);
+	}
 }

@@ -34,20 +34,30 @@ public:
     explicit Player(Position startPosition, int maxHealth = 100);
     bool tryMove(
         Direction direction,
-        const Map& map
+        const Map& map,
+        double moveIntervalSeconds
     );
 
 	HpLevel getHpLevel() const;
 	Position getPosition() const;//const在末尾表示不会修改成员变量
 	void setPosition(Position newPosition);
+
 	bool isInBattle() const;
 	void setInBattle(bool isInBattle);
+
 	bool wasInBattle() const;
 	void setWasInBattle(bool wasInBattle);
+
 	int getHealth() const;
 	int getMaxHealth() const;
 	void setHealth(int health);
+
+	double getMoveCooldownRemainingSeconds() const;
+	void updateMoveCooldown(double elapsedSeconds);
+
+
 private:
+	double moveCooldownRemainingSeconds_ = 0;
 	Position position_;//成员变量用_结尾
 	bool isInBattle_ = false;
 	bool wasInBattle_ = false;

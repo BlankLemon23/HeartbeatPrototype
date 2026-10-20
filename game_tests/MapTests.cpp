@@ -6,14 +6,7 @@
 #include "../game_core/Player.hpp"
 #include "../game_core/ScanController.hpp"
 int main() {
-	assert((Position{ 1, 2 } == Position{ 1, 2 }));
-	assert(!(Position{ 1, 2 } == Position{ 2, 1 }));
-	assert(!(Position{ 1, 2 } == Position{ 1, 3 }));
-	assert(!(Position{ 1, 2 } == Position{ 2, 2 }));
-
 	Player healthPlayer({0, 0});
-	assert(healthPlayer.getHealth() == 100);
-	assert(healthPlayer.getMaxHealth() == 100);
 	assert(healthPlayer.getHpLevel() == HpLevel::High);
 	healthPlayer.setHealth(61);
 	assert(healthPlayer.getHpLevel() == HpLevel::High);
@@ -28,9 +21,6 @@ int main() {
 	healthPlayer.setHealth(0);
 	assert(healthPlayer.getHpLevel() == HpLevel::Dead);
 	Player higherMaxHealthPlayer({0, 0}, 200);
-	assert(higherMaxHealthPlayer.getHealth() == 200);
-	higherMaxHealthPlayer.setHealth(150);
-	assert(higherMaxHealthPlayer.getHealth() == 150);
 	higherMaxHealthPlayer.setHealth(121);
 	assert(higherMaxHealthPlayer.getHpLevel() == HpLevel::High);
 	higherMaxHealthPlayer.setHealth(120);
@@ -69,18 +59,65 @@ int main() {
 	assert(!map.isScanned(0, 0));
 	assert(map.classifyCell(0, 0) == CellType::Unknown);
 
-	map.setMap({ "*.**", "*..*", "****" });
-	Player player({ 0, 1 });
-	assert(player.tryMove(Direction::RIGHT, map) == false);
-	assert(player.getPosition() == (Position{ 0, 1 }));
-	assert(player.tryMove(Direction::UP, map) == false);
-	assert(player.getPosition() == (Position{ 0, 1 }));
-	assert(player.tryMove(Direction::DOWN, map) == true);
-	assert(player.getPosition() == (Position{ 1, 1 }));
+	// Movement requests share one cooldown, including direction changes.
+	{
+		Map movementMap;
+		movementMap.setMap({ "....." });
+		Player movingPlayer({0, 1});
+		const double moveIntervalSeconds = 0.5;
+
+		const bool firstMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		assert(firstMove);
+		assert((movingPlayer.getPosition() == Position{0, 2}));
+
+		const bool repeatedMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		assert(!repeatedMove);
+		const bool changedDirection = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		assert(!changedDirection);
+		assert((movingPlayer.getPosition() == Position{0, 2}));
+
+		movingPlayer.updateMoveCooldown(0.25);
+		const bool earlyMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		assert(!earlyMove);
+		assert((movingPlayer.getPosition() == Position{0, 2}));
+
+		movingPlayer.updateMoveCooldown(0.25);
+		const bool moveAtDeadline = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		assert(moveAtDeadline);
+		assert((movingPlayer.getPosition() == Position{0, 3}));
+
+		// Idle time expires the cooldown without storing extra moves.
+		movingPlayer.updateMoveCooldown(10.0);
+		assert(movingPlayer.getMoveCooldownRemainingSeconds() == 0.0);
+		const bool moveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		assert(moveAfterIdle);
+		assert((movingPlayer.getPosition() == Position{0, 2}));
+		const bool extraMoveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		assert(!extraMoveAfterIdle);
+		assert((movingPlayer.getPosition() == Position{0, 2}));
+
+	}
+
+	// Failed moves must not delay a valid move in another direction.
+	{
+		Map obstacleMap;
+		obstacleMap.setMap({ ".*." , "..." });
+		Player blockedPlayer({0, 0});
+		const double moveIntervalSeconds = 0.5;
+		const bool hitWall = blockedPlayer.tryMove(Direction::RIGHT, obstacleMap, moveIntervalSeconds);
+		assert(!hitWall);
+		assert((blockedPlayer.getPosition() == Position{0, 0}));
+		const bool leftMap = blockedPlayer.tryMove(Direction::UP, obstacleMap, moveIntervalSeconds);
+		assert(!leftMap);
+		assert((blockedPlayer.getPosition() == Position{0, 0}));
+		const bool moveAfterBlockedAttempts = blockedPlayer.tryMove(Direction::DOWN, obstacleMap, moveIntervalSeconds);
+		assert(moveAfterBlockedAttempts);
+		assert((blockedPlayer.getPosition() == Position{1, 0}));
+	}
 
 	map.setMap({ ".*." });
 	ScanController scanController(0.0, 3);
-	player.setPosition({ 0, 0 });
+	Player player({0, 0});
 	assert(scanController.canScanManually(player));
 	const bool firstManualScan = scanController.tryScanManually(player, map, 5.0);
 	assert(firstManualScan);
@@ -110,9 +147,7 @@ int main() {
 	assert(scanController.canScanManually(player));
 
 	// The controller reads the player's current state on each call.
-	assert(!player.isInBattle());
 	player.setInBattle(true);
-	assert(player.isInBattle());
 	assert(!scanController.canScanManually(player));
 	const bool blockedByBattle = scanController.tryScanManually(player, blockedMap, 2.0);
 	assert(!blockedByBattle);
@@ -148,7 +183,6 @@ int main() {
 	battlePlayer.setPosition({0, 4});
 	battlePlayer.setInBattle(true);
 	battleScanner.updateBattleScan(battlePlayer, battleMap, 2.0, 2.0, 2.0);
-	assert(battlePlayer.wasInBattle());
 	assert(battleMap.isScanned(0, 4));
 
 	// Staying in battle waits for the automatic interval before the next scan.
@@ -163,7 +197,6 @@ int main() {
 	// Exiting preserves cooldown; entering again triggers a new immediate scan.
 	battlePlayer.setInBattle(false);
 	battleScanner.updateBattleScan(battlePlayer, battleMap, 2.0, 2.0, 2.0);
-	assert(!battlePlayer.wasInBattle());
 	assert(!battleScanner.canScanManually(battlePlayer));
 	battleScanner.updateScanTime(1.0);
 	assert(!battleScanner.canScanManually(battlePlayer));

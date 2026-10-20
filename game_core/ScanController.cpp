@@ -4,11 +4,11 @@
 #include <limits>
 #include <stdexcept>
 
-ScanController::ScanController(double scanCooldownTime,double ScanRadius) : scanCooldownTime_(scanCooldownTime), scanRadius_(ScanRadius) {
+ScanController::ScanController(double initialScanCooldownSeconds,double ScanRadius) : scanCooldownRemainingSeconds_(initialScanCooldownSeconds), scanRadius_(ScanRadius) {
 	
 }
-void ScanController::setScanCooldownTime(double scanCooldownTime) {
-	scanCooldownTime_ = scanCooldownTime;
+void ScanController::setScanCooldownRemainingSeconds(double remainingSeconds) {
+	scanCooldownRemainingSeconds_ = remainingSeconds;
 }
 
 
@@ -17,19 +17,19 @@ bool ScanController::canScanManually(const Player& player) const {
 	if (player.isInBattle() || player.getHealth() == 0) {
 		return false;
 	}
-	else if (scanCooldownTime_ > 0) {
+	else if (scanCooldownRemainingSeconds_ > 0) {
 		return false;
 	}
 	
 	return true;
 }
 
-bool ScanController::tryScanManually(const Player& player, Map& map, double scanCooldownTime) {
+bool ScanController::tryScanManually(const Player& player, Map& map, double scanIntervalSeconds) {
 	if (!canScanManually(player)) {
 		return false;
 	}
 
-	scan(player, map, scanCooldownTime);
+	scan(player, map, scanIntervalSeconds);
 	return true;
 }
 
@@ -56,12 +56,14 @@ void ScanController::updateBattleScan(Player& player, Map& map, double highInter
 			currentLevel, highIntervalSeconds, mediumIntervalSeconds, lowIntervalSeconds);
 
 		const bool enteredBattle = !player.wasInBattle();
+
 		const bool droppedToLowerLevel = previousHpLevel_.has_value() && currentLevel < *previousHpLevel_;
 		//previousHpLevel_.has_value() 返回 bool，表示「这个 optional 里当前是否存着一个值」。
 		//•	previousHpLevel_ 是 optional，不能直接比较，要先解引用取出里面的值。
 		//•* previousHpLevel_ 就是「上一帧的血量等级」。
 	    //•	currentLevel < *previousHpLevel_ 表示「当前血量等级比上一帧更低」。
 		//枚举类从上到下的顺序是 Dead < Low < Medium < High，所以可以直接用 < 比较。也就是等
+
 		if (enteredBattle || droppedToLowerLevel) {
 			scan(player, map, automaticIntervalSeconds);
 		}
@@ -86,7 +88,7 @@ bool ScanController::canScanAutomatically(const Player& player) const
 	if (!player.isInBattle() || player.getHealth() == 0) {
 		return false;
 	}
-	else if (scanCooldownTime_ > 0) {
+	else if (scanCooldownRemainingSeconds_ > 0) {
 		return false;
 	}
 
@@ -110,12 +112,12 @@ double ScanController::getAutoScanTimeAccordingToHpLevel(HpLevel level, double h
 }
 
 void ScanController::updateScanTime(double elapsedSeconds) {
-	if (scanCooldownTime_ > 0) {
-		scanCooldownTime_ -= elapsedSeconds;
+	if (scanCooldownRemainingSeconds_ > 0) {
+		scanCooldownRemainingSeconds_ -= elapsedSeconds;
 	}
 };
 
-void ScanController::scan(const Player& player, Map& map,double scanCooldownTime) {
+void ScanController::scan(const Player& player, Map& map,double scanIntervalSeconds) {
 	const Position playerPosition = player.getPosition();
 	double scanRadiusSquared = scanRadius_ * scanRadius_;
 	double rowOffset = 0;
@@ -133,11 +135,11 @@ void ScanController::scan(const Player& player, Map& map,double scanCooldownTime
 			
 		}
 	}
-	setScanCooldownTime(scanCooldownTime);
+	setScanCooldownRemainingSeconds(scanIntervalSeconds);
 	
 }
 
-bool ScanController::ifPlayerCanSeeTheTarget(Position playerPosition, Position targetPosition, const Map& map) {
+bool ScanController::		 (Position playerPosition, Position targetPosition, const Map& map) {
 	if (playerPosition == targetPosition) {
 		return true;
 	}
