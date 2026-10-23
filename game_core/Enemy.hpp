@@ -1,10 +1,13 @@
-#pragma once
+ï»¿#pragma once
 #include "Map.hpp"
 #include "Position.hpp"
+#include <random>
+
 
 struct EnemyConfig {
     int startingHealth;
     double moveIntervalSeconds;
+    double wanderIntervalSeconds;
     int wanderingRadiusCells;
     double waitAfterLossSeconds;
     int normalDetectionRadiusCells;
@@ -19,10 +22,10 @@ enum class EnemyState {
 };
 
 class Enemy {
-    //¹«ÓĞµÄ·½·¨Íâ²¿¿ÉÒÔµ÷ÓÃ Ë½ÓĞ·½·¨Ò»°ã²»»á±»Íâ²¿µ÷ÓÃ ²Å¶¨ÒåÎªË½ÓĞ
+    //å…¬æœ‰çš„æ–¹æ³•å¤–éƒ¨å¯ä»¥è°ƒç”¨ ç§æœ‰æ–¹æ³•ä¸€èˆ¬ä¸ä¼šè¢«å¤–éƒ¨è°ƒç”¨ æ‰å®šä¹‰ä¸ºç§æœ‰
 public:
     Enemy(Position startPosition, const EnemyConfig& config);
-    void update(double elapsedSeconds, const Map& map, Position playerPosition, bool playerIsStealth);
+    void updateEnemy(double elapsedSeconds, const Map& map, Position playerPosition, bool playerIsStealth);
     Position getPosition() const;
     int getHealth() const;
     bool isChasing() const;
@@ -32,18 +35,22 @@ private:
     bool tryMoveTo(Position nextPosition, const Map& map);
     void chase(Position playerPosition, const Map& map);
     void wander(const Map& map);
-
+    void stopChasing();
+    int calculateSquaredDistanceToPlayer(Position playerPosition) const;
+    // Seed once per enemy; retain the generator state between moves.
+    std::mt19937 randomEngine_{std::random_device{}()};
     EnemyConfig config_;
-    //£ºÅäÖÃ»Ø´ğ¡°Ó¦¸ÃÔõÑùĞĞ¶¯¡±£¬×´Ì¬»Ø´ğ¡°ÏÖÔÚÊÇÊ²Ã´Çé¿ö¡±¡£
-    //ÏÂÊö×´Ì¬ÊÇ¶¯Ì¬µÄ
+    //ï¼šé…ç½®å›ç­”â€œåº”è¯¥æ€æ ·è¡ŒåŠ¨â€ï¼ŒçŠ¶æ€å›ç­”â€œç°åœ¨æ˜¯ä»€ä¹ˆæƒ…å†µâ€ã€‚
+    //ä¸‹è¿°çŠ¶æ€æ˜¯åŠ¨æ€çš„
     // 
-    //ÅäÖÃ¹æ¶¨¹æÔò£¬×´Ì¬¼ÇÂ¼µ±Ç°Çé¿ö
-    //£ºÅäÖÃ£¨Configuration£©£ºµĞÈËÓ¦¸Ã°´Ê²Ã´¹æÔòĞĞ¶¯¡£
-        // ×´Ì¬£¨State£©£ºÕâ¸öµĞÈËÏÖÔÚ´¦ÓÚÊ²Ã´Çé¿ö¡£
+    //é…ç½®è§„å®šè§„åˆ™ï¼ŒçŠ¶æ€è®°å½•å½“å‰æƒ…å†µ
+    //ï¼šé…ç½®ï¼ˆConfigurationï¼‰ï¼šæ•Œäººåº”è¯¥æŒ‰ä»€ä¹ˆè§„åˆ™è¡ŒåŠ¨ã€‚
+        // çŠ¶æ€ï¼ˆStateï¼‰ï¼šè¿™ä¸ªæ•Œäººç°åœ¨å¤„äºä»€ä¹ˆæƒ…å†µã€‚
     Position position_;
-    Position patrolCenter_;
+    Position wanderCenter_;
     int health_;
     double moveCooldownRemainingSeconds_ = 0.0;
     double waitRemainingSeconds_ = 0.0;
+    double wanderRemainingSeconds_ = 0.0;
     EnemyState state_ = EnemyState::Wandering;
 };

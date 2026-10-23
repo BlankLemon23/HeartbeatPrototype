@@ -20,7 +20,9 @@ int main() {
 	assert(healthPlayer.getHpLevel() == HpLevel::Low);
 	healthPlayer.setHealth(0);
 	assert(healthPlayer.getHpLevel() == HpLevel::Dead);
-	Player higherMaxHealthPlayer({0, 0}, 200);
+	PlayerConfig higherHealthConfig{};
+	higherHealthConfig.maxHealth = 200;
+	Player higherMaxHealthPlayer({0, 0}, higherHealthConfig);
 	higherMaxHealthPlayer.setHealth(121);
 	assert(higherMaxHealthPlayer.getHpLevel() == HpLevel::High);
 	higherMaxHealthPlayer.setHealth(120);
@@ -35,12 +37,35 @@ int main() {
 	assert(higherMaxHealthPlayer.getHealth() == 0);
 	bool rejectedInvalidMaxHealth = false;
 	try {
-		Player invalidPlayer({0, 0}, 0);
+		PlayerConfig invalidConfig{};
+		invalidConfig.maxHealth = 0;
+		Player invalidPlayer({0, 0}, invalidConfig);
 	}
 	catch (const std::invalid_argument&) {
 		rejectedInvalidMaxHealth = true;
 	}
 	assert(rejectedInvalidMaxHealth);
+	bool rejectedInvalidMoveInterval = false;
+	try {
+		PlayerConfig invalidConfig{};
+		invalidConfig.normalMoveIntervalSeconds = 0.0;
+		Player invalidPlayer({0, 0}, invalidConfig);
+	}
+	catch (const std::invalid_argument&) {
+		rejectedInvalidMoveInterval = true;
+	}
+	assert(rejectedInvalidMoveInterval);
+
+	// Losing all pursuers counts down; renewed pursuit starts a full delay.
+	PlayerConfig battleExitConfig{};
+	battleExitConfig.outBattleIntervalSeconds = 1.5;
+	Player battleExitPlayer({0, 0}, battleExitConfig);
+	battleExitPlayer.setInBattle(true);
+	battleExitPlayer.updateOutBattleRemainingSeconds(1.0);
+	assert(battleExitPlayer.getOutBattleRemainingSeconds() == 0.5);
+	battleExitPlayer.resetOutBattleRemainingSeconds();
+	battleExitPlayer.updateOutBattleRemainingSeconds(1.5);
+	assert(battleExitPlayer.getOutBattleRemainingSeconds() == 0.0);
 
 	Map map;
 	map.setMap({ "****", "*..*", "****" });
@@ -63,39 +88,61 @@ int main() {
 	{
 		Map movementMap;
 		movementMap.setMap({ "....." });
-		Player movingPlayer({0, 1});
-		const double moveIntervalSeconds = 0.5;
+		PlayerConfig movementConfig{};
+		movementConfig.normalMoveIntervalSeconds = 0.75;
+		Player movingPlayer({0, 1}, movementConfig);
 
-		const bool firstMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		const bool firstMove = movingPlayer.tryMove(Direction::RIGHT, movementMap);
 		assert(firstMove);
 		assert((movingPlayer.getPosition() == Position{0, 2}));
 
-		const bool repeatedMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		const bool repeatedMove = movingPlayer.tryMove(Direction::RIGHT, movementMap);
 		assert(!repeatedMove);
-		const bool changedDirection = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		const bool changedDirection = movingPlayer.tryMove(Direction::LEFT, movementMap);
 		assert(!changedDirection);
 		assert((movingPlayer.getPosition() == Position{0, 2}));
 
-		movingPlayer.updateMoveCooldown(0.25);
-		const bool earlyMove = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		movingPlayer.updateMoveCooldown(0.5);
+		const bool earlyMove = movingPlayer.tryMove(Direction::RIGHT, movementMap);
 		assert(!earlyMove);
 		assert((movingPlayer.getPosition() == Position{0, 2}));
 
 		movingPlayer.updateMoveCooldown(0.25);
-		const bool moveAtDeadline = movingPlayer.tryMove(Direction::RIGHT, movementMap, moveIntervalSeconds);
+		const bool moveAtDeadline = movingPlayer.tryMove(Direction::RIGHT, movementMap);
 		assert(moveAtDeadline);
 		assert((movingPlayer.getPosition() == Position{0, 3}));
 
 		// Idle time expires the cooldown without storing extra moves.
 		movingPlayer.updateMoveCooldown(10.0);
 		assert(movingPlayer.getMoveCooldownRemainingSeconds() == 0.0);
-		const bool moveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		const bool moveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap);
 		assert(moveAfterIdle);
 		assert((movingPlayer.getPosition() == Position{0, 2}));
-		const bool extraMoveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap, moveIntervalSeconds);
+		const bool extraMoveAfterIdle = movingPlayer.tryMove(Direction::LEFT, movementMap);
 		assert(!extraMoveAfterIdle);
 		assert((movingPlayer.getPosition() == Position{0, 2}));
 
+	}
+
+	// Switching modes keeps the current cooldown; the next move uses the new interval.
+	{
+		Map movementMap;
+		movementMap.setMap({ "....." });
+		PlayerConfig config{};
+		config.normalMoveIntervalSeconds = 0.5;
+		config.stealthMoveIntervalSeconds = 1.0;
+		Player movingPlayer({0, 1}, config);
+		assert(movingPlayer.tryMove(Direction::RIGHT, movementMap));
+		movingPlayer.toggleStealth();
+		assert(!movingPlayer.tryMove(Direction::RIGHT, movementMap));
+		movingPlayer.updateMoveCooldown(0.5);
+		assert(movingPlayer.tryMove(Direction::RIGHT, movementMap));
+		movingPlayer.toggleStealth();
+		movingPlayer.updateMoveCooldown(0.5);
+		assert(!movingPlayer.tryMove(Direction::RIGHT, movementMap));
+		movingPlayer.updateMoveCooldown(0.5);
+		assert(movingPlayer.tryMove(Direction::RIGHT, movementMap));
+		assert((movingPlayer.getPosition() == Position{0, 4}));
 	}
 
 	// Failed moves must not delay a valid move in another direction.
@@ -103,14 +150,13 @@ int main() {
 		Map obstacleMap;
 		obstacleMap.setMap({ ".*." , "..." });
 		Player blockedPlayer({0, 0});
-		const double moveIntervalSeconds = 0.5;
-		const bool hitWall = blockedPlayer.tryMove(Direction::RIGHT, obstacleMap, moveIntervalSeconds);
+		const bool hitWall = blockedPlayer.tryMove(Direction::RIGHT, obstacleMap);
 		assert(!hitWall);
 		assert((blockedPlayer.getPosition() == Position{0, 0}));
-		const bool leftMap = blockedPlayer.tryMove(Direction::UP, obstacleMap, moveIntervalSeconds);
+		const bool leftMap = blockedPlayer.tryMove(Direction::UP, obstacleMap);
 		assert(!leftMap);
 		assert((blockedPlayer.getPosition() == Position{0, 0}));
-		const bool moveAfterBlockedAttempts = blockedPlayer.tryMove(Direction::DOWN, obstacleMap, moveIntervalSeconds);
+		const bool moveAfterBlockedAttempts = blockedPlayer.tryMove(Direction::DOWN, obstacleMap);
 		assert(moveAfterBlockedAttempts);
 		assert((blockedPlayer.getPosition() == Position{1, 0}));
 	}
@@ -169,8 +215,8 @@ int main() {
 
 	// A wall touching the ray at a corner blocks it in both directions.
 	map.setMap({ ".*", ".." });
-	assert(!scanController.ifPlayerCanSeeTheTarget({0, 0}, {1, 1}, map));
-	assert(!scanController.ifPlayerCanSeeTheTarget({1, 1}, {0, 0}, map));
+	assert(!map.hasLineOfSight({0, 0}, {1, 1}));
+	assert(!map.hasLineOfSight({1, 1}, {0, 0}));
 
 	// Entering battle scans immediately, even with a manual cooldown remaining.
 	Map battleMap;
@@ -183,27 +229,27 @@ int main() {
 	battleScanner.updateScanTime(2.0);
 	battlePlayer.setPosition({0, 4});
 	battlePlayer.setInBattle(true);
-	battleScanner.updateBattleScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
 	assert(battleMap.isScanned(0, 4));
 
 	// Staying in battle waits for the automatic interval before the next scan.
 	battlePlayer.setPosition({0, 7});
 	battleScanner.updateScanTime(1.0);
-	battleScanner.updateBattleScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
 	assert(!battleMap.isScanned(0, 7));
 	battleScanner.updateScanTime(1.0);
-	battleScanner.updateBattleScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
 	assert(battleMap.isScanned(0, 7));
 
 	// Exiting preserves cooldown; entering again triggers a new immediate scan.
 	battlePlayer.setInBattle(false);
-	battleScanner.updateBattleScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
 	assert(!battleScanner.canScanManually(battlePlayer));
 	battleScanner.updateScanTime(1.0);
 	assert(!battleScanner.canScanManually(battlePlayer));
 	battlePlayer.setPosition({0, 2});
 	battlePlayer.setInBattle(true);
-	battleScanner.updateBattleScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
 	assert(battleMap.isScanned(0, 2));
 
 	// A lower health band scans immediately and starts its own interval.
@@ -213,44 +259,44 @@ int main() {
 	ScanController healthScanner(0.0, 0.0);
 	const BattleScanConfig healthIntervals{3.0, 2.0, 1.2};
 	scanningPlayer.setInBattle(true);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 0));
 	scanningPlayer.setPosition({0, 2});
 	healthScanner.updateScanTime(2.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(!healthScanMap.isScanned(0, 2));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 2));
 	scanningPlayer.setPosition({0, 4});
 	scanningPlayer.setHealth(60);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 4));
 	scanningPlayer.setPosition({0, 6});
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(!healthScanMap.isScanned(0, 6));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 6));
 	scanningPlayer.setPosition({0, 8});
 	scanningPlayer.setHealth(20);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 8));
 	scanningPlayer.setPosition({0, 10});
 	scanningPlayer.setHealth(19);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(!healthScanMap.isScanned(0, 10));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(!healthScanMap.isScanned(0, 10));
 	healthScanner.updateScanTime(0.2);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(healthScanMap.isScanned(0, 10));
 	scanningPlayer.setPosition({0, 12});
 	scanningPlayer.setHealth(0);
 	healthScanner.updateScanTime(10.0);
-	healthScanner.updateBattleScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
 	assert(!healthScanMap.isScanned(0, 12));
 	scanningPlayer.setInBattle(false);
 	assert(!healthScanner.tryScanManually(scanningPlayer, healthScanMap, 5.0));

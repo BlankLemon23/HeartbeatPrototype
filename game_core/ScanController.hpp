@@ -18,7 +18,6 @@ public:
 	ScanController(double initialScanCooldownSeconds, double scanRadiusCells);
 	bool canScanManually(const Player& player) const;
 	bool tryScanManually(const Player& player, Map& map, double scanIntervalSeconds);
-	bool ifPlayerCanSeeTheTarget(Position playerPosition, Position targetPosition, const Map& map) const;
 private:
 	bool tryScanAutomatically(const Player& player, Map& map, double automaticIntervalSeconds);
 	bool canScanAutomatically(const Player& player) const;
