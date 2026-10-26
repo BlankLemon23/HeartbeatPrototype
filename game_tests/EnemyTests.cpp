@@ -14,6 +14,7 @@ int main() {
     config.normalDetectionRadiusCells = 8;
     config.stealthDetectionRadiusCells = 3;
     config.stopChaseRadiusCells = 15;
+    config.hearSoundRadiusCells = 8;
 
     // A wall hides the player, leaving one legal neighbor for wandering.
     Map corridor;
@@ -122,4 +123,35 @@ int main() {
     const std::vector<Enemy> noEnemies;
     assert(snapshotScanner.tryScanManually(observer, snapshotMap, 0.0, noEnemies));
     assert(snapshotScanner.getEnemySnapshotPositions().empty());
+
+    // Sound crosses a wall: only listeners in range investigate the fixed source.
+    Map soundMap;
+    soundMap.setMap({".....", ".***.", "....."});
+    Player soundOwner({2, 2});
+    EnemyConfig soundConfig = config;
+    soundConfig.wanderingRadiusCells = 0;
+    soundConfig.hearSoundRadiusCells = 2;
+    std::vector<Enemy> listeners;
+    listeners.emplace_back(Position{0, 2}, soundConfig);
+    listeners.emplace_back(Position{0, 0}, soundConfig);
+    soundOwner.makeSound(soundOwner.getPosition(), listeners);
+    for (Enemy& listener : listeners) {
+        listener.updateEnemy(0.5, soundMap, soundOwner.getPosition(), false);
+    }
+    assert(!(listeners[0].getPosition() == Position{0, 2}));
+    assert((listeners[1].getPosition() == Position{0, 0}));
+    assert(!listeners[0].isChasing());
+
+    // An unreachable sound source ends investigation and resumes local wandering.
+    Map separatedMap;
+    separatedMap.setMap({"...", "***", "..."});
+    EnemyConfig separatedConfig = config;
+    separatedConfig.wanderingRadiusCells = 1;
+    Enemy separatedListener({0, 1}, separatedConfig);
+    separatedListener.hearSound({2, 1});
+    separatedListener.updateEnemy(0.0, separatedMap, {2, 1}, false);
+    assert((separatedListener.getPosition() == Position{0, 1}));
+    separatedListener.updateEnemy(separatedConfig.wanderIntervalSeconds,
+                                  separatedMap, {2, 1}, false);
+    assert(!(separatedListener.getPosition() == Position{0, 1}));
 }

@@ -26,7 +26,7 @@ void Enemy::updateEnemy(double elapsedSeconds, const Map& map, Position playerPo
 	}
 	
 	bool ifEnemyCanSeeThePlayer = canSeePlayer(playerPosition, playerIsStealth, map);
-	const int distanceSquared = calculateSquaredDistanceToPlayer(playerPosition);
+	const int distanceSquared = calculateSquaredDistanceToTarget(playerPosition);
 
 	switch (state_) {
 	case EnemyState::Wandering:
@@ -48,7 +48,9 @@ void Enemy::updateEnemy(double elapsedSeconds, const Map& map, Position playerPo
 		}
 		else {
 			moveCooldownRemainingSeconds_ -= elapsedSeconds;
-			chase(playerPosition, map);
+			if (moveCooldownRemainingSeconds_ <= 0.0) {
+				tryMoveToward(playerPosition, map);
+			}
 		}
 		break;
 	case EnemyState::WaitingAfterLoss:
@@ -62,6 +64,26 @@ void Enemy::updateEnemy(double elapsedSeconds, const Map& map, Position playerPo
 			state_ = EnemyState::Wandering;
 		}
 		break;
+	case EnemyState::InvestigatingSound:
+		if (ifEnemyCanSeeThePlayer) {
+			state_ = EnemyState::Chasing;
+			break;
+		}
+
+		if (position_ == soundSourcePosition_) {
+			stopChasing();
+			break;
+		}
+		moveCooldownRemainingSeconds_ -= elapsedSeconds;
+		if (moveCooldownRemainingSeconds_ <= 0.0 &&
+			!tryMoveToward(soundSourcePosition_, map)) {
+			// The source cannot be reached: wander around the current position.
+			wanderCenter_ = position_;
+			wanderRemainingSeconds_ = config_.wanderIntervalSeconds;
+			state_ = EnemyState::Wandering;
+		}
+		break;
+
 	default:
 		break;
 	}
@@ -119,10 +141,10 @@ bool Enemy::canSeePlayer(Position playerPosition, bool playerIsStealth, const Ma
 	return false;
 	
 }
-//for chase and wander,wenn cooldown = 0 ,move to next position and set cooldown to interval
+//for chase,investigate and and wander,wenn cooldown = 0 ,move to next position and set cooldown to interval
 bool Enemy::tryMoveTo(Position nextPosition, const Map& map)
 {
-	if (state_ == EnemyState::Chasing) {
+	if (state_ == EnemyState::Chasing || state_ == EnemyState::InvestigatingSound) {
 		if (health_ <= 0 || moveCooldownRemainingSeconds_ > 0.0) {
 			return false;
 		}
@@ -144,7 +166,7 @@ bool Enemy::tryMoveTo(Position nextPosition, const Map& map)
 
     position_ = nextPosition;
 
-	if (state_ == EnemyState::Chasing) {
+	if (state_ == EnemyState::Chasing || state_ == EnemyState::InvestigatingSound) {
 		moveCooldownRemainingSeconds_ = config_.moveIntervalSeconds;
 	}
 	else {
@@ -153,13 +175,13 @@ bool Enemy::tryMoveTo(Position nextPosition, const Map& map)
 
     return true;
 }
-//实现追逐 重点学习语法和previous frontier visited的数据结构如何定义和初始化以及更新
-void Enemy::chase(Position playerPosition, const Map& map)
+//实现朝目标寻路 重点学习语法和previous frontier visited的数据结构如何定义和初始化以及更新
+bool Enemy::tryMoveToward(Position targetPosition, const Map& map)
 {
-	if (moveCooldownRemainingSeconds_ > 0 || position_ == playerPosition) {
-		return;
+	if (position_ == targetPosition) {
+		return true;
 	}
-
+	//frontier 已经发现、但还没被探索(展开)的节点集合
 	std::queue<Position> frontier;
 	
 	std::vector<std::vector<bool>> visited;
@@ -181,7 +203,7 @@ void Enemy::chase(Position playerPosition, const Map& map)
 	while (!frontier.empty()) {
 		//如果是Position current = frontier.front(); 就会重新定义一个current
 		 current = frontier.front(); 
-		if (current == playerPosition) {
+		if (current == targetPosition) {
 			break; 
 		}
 		frontier.pop();
@@ -201,7 +223,7 @@ void Enemy::chase(Position playerPosition, const Map& map)
 	}
 
 	if (frontier.empty()) {
-		return;
+		return false;
 	}
 	
 	Position previousPosition = previous[current.row][current.column];
@@ -210,9 +232,7 @@ void Enemy::chase(Position playerPosition, const Map& map)
 			previousPosition = previous[current.row][current.column];
 		}
 
-		tryMoveTo(current, map);
-		
-
+		return tryMoveTo(current, map);
 }
 
 void Enemy::wander(const Map& map)
@@ -270,10 +290,24 @@ wanderRemainingSeconds_ = config_.wanderIntervalSeconds;
 waitRemainingSeconds_ = config_.waitAfterLossSeconds;	
 }
 
-int Enemy::calculateSquaredDistanceToPlayer(Position playerPosition) const
+int Enemy::calculateSquaredDistanceToTarget(Position targetPosition) const
 {
-	int rowOffset = playerPosition.row - position_.row;
-	int columnOffset = playerPosition.column - position_.column;
+	int rowOffset = targetPosition.row - position_.row;
+	int columnOffset = targetPosition.column - position_.column;
 	return rowOffset * rowOffset + columnOffset * columnOffset;
 		    
+}
+
+bool Enemy::canHearSound(Position soundSource) const {
+	const int distanceSquaredToSound = calculateSquaredDistanceToTarget(soundSource);
+	const int hearingRadius = config_.hearSoundRadiusCells;
+	return distanceSquaredToSound <= hearingRadius * hearingRadius;
+}
+
+void Enemy::hearSound(Position soundSource) {
+	if (health_ <= 0 || state_ == EnemyState::Chasing || !canHearSound(soundSource)) {
+		return;
+	}
+	soundSourcePosition_ = soundSource;
+	state_ = EnemyState::InvestigatingSound;
 }

@@ -13,12 +13,14 @@ struct EnemyConfig {
     int normalDetectionRadiusCells;
     int stealthDetectionRadiusCells;
     int stopChaseRadiusCells;
+    int hearSoundRadiusCells;
 };
 
 enum class EnemyState {
     Wandering,
     Chasing,
-    WaitingAfterLoss
+    WaitingAfterLoss,
+    InvestigatingSound
 };
 
 class Enemy {
@@ -29,14 +31,16 @@ public:
     Position getPosition() const;
     int getHealth() const;
     bool isChasing() const;
+    void hearSound(Position soundSource);
 
 private:
+    bool canHearSound(Position soundSource) const;
     bool canSeePlayer(Position playerPosition, bool playerIsStealth, const Map& map) const;
     bool tryMoveTo(Position nextPosition, const Map& map);
-    void chase(Position playerPosition, const Map& map);
+    bool tryMoveToward(Position targetPosition, const Map& map);
     void wander(const Map& map);
     void stopChasing();
-    int calculateSquaredDistanceToPlayer(Position playerPosition) const;
+    int calculateSquaredDistanceToTarget(Position targetPosition) const;
     // Seed once per enemy; retain the generator state between moves.
     std::mt19937 randomEngine_{std::random_device{}()};
     EnemyConfig config_;
@@ -48,6 +52,7 @@ private:
         // 状态（State）：这个敌人现在处于什么情况。
     Position position_;
     Position wanderCenter_;
+    Position soundSourcePosition_;
     int health_;
     double moveCooldownRemainingSeconds_ = 0.0;
     double waitRemainingSeconds_ = 0.0;

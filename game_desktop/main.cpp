@@ -67,6 +67,7 @@ int main() {
 	enemyConfig.normalDetectionRadiusCells = 8;
 	enemyConfig.stealthDetectionRadiusCells = 3;
 	enemyConfig.stopChaseRadiusCells = 15;
+	enemyConfig.hearSoundRadiusCells = 8;
 
 	std::vector<Enemy> enemies;
 	enemies.emplace_back(Position{ 1, 11 }, enemyConfig);
@@ -105,6 +106,10 @@ int main() {
 		}
 		else if (IsKeyDown(KEY_LEFT)) {
 			player.tryMove(Direction::LEFT, map);
+		}
+
+		if (IsKeyPressed(KEY_R)) {
+			player.makeSound(player.getPosition(), enemies);
 		}
 
 

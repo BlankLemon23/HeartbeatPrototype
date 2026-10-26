@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdexcept>
 
+
 Player::Player(Position startPosition, PlayerConfig config)
 	: config_(config), position_(startPosition), health_(config.maxHealth),
 	  outBattleRemainingSeconds_(config.outBattleIntervalSeconds) {
@@ -129,4 +130,10 @@ void Player::updateOutBattleRemainingSeconds(double elapsedSeconds) {
 
 void Player::resetOutBattleRemainingSeconds() {
 	outBattleRemainingSeconds_ = config_.outBattleIntervalSeconds;
+}
+
+void Player::makeSound(Position soundSource, std::vector<Enemy>& enemies) {
+	for (Enemy& enemy : enemies) {
+		enemy.hearSound(soundSource);
+	}
 }

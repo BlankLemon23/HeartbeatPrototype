@@ -2,6 +2,8 @@
 
 #include "Map.hpp"
 #include "Position.hpp"
+#include "Enemy.hpp"
+#include <vector>
 
 // Keep levels ordered so a smaller value means a lower health band.
 enum class HpLevel {
@@ -54,6 +56,8 @@ public:
     double getOutBattleRemainingSeconds() const;
     void updateOutBattleRemainingSeconds(double elapsedSeconds);
     void resetOutBattleRemainingSeconds();
+
+    void makeSound(Position soundSource, std::vector<Enemy>& enemies);
 private:
     // Fixed settings are separate from the state that changes each frame.
     PlayerConfig config_;
