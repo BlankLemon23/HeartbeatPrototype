@@ -53,7 +53,10 @@ int main() {
 	battleScanConfig.mediumHealthIntervalSeconds = 2.0;
 	battleScanConfig.lowHealthIntervalSeconds = 1.2;
 
-	ScanController scanController(0, 5);
+	const double initialScanCooldownSeconds = 0.0;
+	const double scanRadiusCells = 5.0;
+	const double enemySnapshotDurationSeconds = 0.5;
+	ScanController scanController(initialScanCooldownSeconds, scanRadiusCells, enemySnapshotDurationSeconds);
 
 	EnemyConfig enemyConfig{};
 	enemyConfig.startingHealth = 100;
@@ -84,6 +87,7 @@ int main() {
 
 		const double elapsedSeconds = GetFrameTime();
 		scanController.updateScanTime(elapsedSeconds);
+		scanController.updateSnapshotRemainingSeconds(elapsedSeconds);
 		player.updateMoveCooldown(elapsedSeconds);
 
 		if (IsKeyPressed(KEY_LEFT_SHIFT)) {
@@ -131,10 +135,10 @@ int main() {
 
 
 		if (IsKeyPressed(KEY_SPACE)) {
-			scanController.tryScanManually(player, map, manualScanIntervalSeconds);
+			scanController.tryScanManually(player, map, manualScanIntervalSeconds, enemies);
 		}
 
-		scanController.updateBattleAutoScan(player, map, battleScanConfig);
+		scanController.updateBattleAutoScan(player, map, battleScanConfig, enemies);
 
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
@@ -166,8 +170,8 @@ int main() {
 
 		DrawRectangle(player.getPosition().column * cellSize, player.getPosition().row * cellSize,
 			cellSize, cellSize, player.isStealthEnabled() ? PURPLE : BLUE);
-		for (auto& enemy : enemies) {
-			DrawRectangle(enemy.getPosition().column * cellSize, enemy.getPosition().row * cellSize, cellSize, cellSize, YELLOW);
+		for (const Position snapshotPosition : scanController.getEnemySnapshotPositions()) {
+			DrawRectangle(snapshotPosition.column * cellSize, snapshotPosition.row * cellSize, cellSize, cellSize, YELLOW);
 		}
 
 		EndDrawing();

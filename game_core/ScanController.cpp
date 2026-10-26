@@ -1,11 +1,15 @@
 #include "ScanController.hpp"
+#include "Enemy.hpp"
 #include "Player.hpp"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
-ScanController::ScanController(double initialScanCooldownSeconds, double scanRadiusCells) : scanCooldownRemainingSeconds_(initialScanCooldownSeconds), scanRadiusCells_(scanRadiusCells) {
-	
+ScanController::ScanController(double initialScanCooldownSeconds, double scanRadiusCells, double enemySnapshotDurationSeconds) : scanCooldownRemainingSeconds_(initialScanCooldownSeconds), scanRadiusCells_(scanRadiusCells), enemySnapshotDurationSeconds_(enemySnapshotDurationSeconds) {
+	if (!std::isfinite(enemySnapshotDurationSeconds_) || enemySnapshotDurationSeconds_ <= 0.0) {
+		throw std::invalid_argument("enemy snapshot duration must be positive and finite");
+	}
 }
 void ScanController::setScanCooldownRemainingSeconds(double remainingSeconds) {
 	scanCooldownRemainingSeconds_ = remainingSeconds;
@@ -24,12 +28,12 @@ bool ScanController::canScanManually(const Player& player) const {
 	return true;
 }
 
-bool ScanController::tryScanManually(const Player& player, Map& map, double scanIntervalSeconds) {
+bool ScanController::tryScanManually(const Player& player, Map& map, double scanIntervalSeconds, const std::vector<Enemy>& enemies) {
 	if (!canScanManually(player)) {
 		return false;
 	}
 
-	scan(player, map, scanIntervalSeconds);
+	scan(player, map, scanIntervalSeconds, enemies);
 	return true;
 }
 
@@ -48,7 +52,7 @@ bool ScanController::tryScanManually(const Player& player, Map& map, double scan
 //
 // 注：正因最后才写，所以“本帧是何时被改成 inBattle 的”并不重要——只要本帧
 // 调用本方法之前已经改好即可；写入结果要到下一帧才会被读到。
-void ScanController::updateBattleAutoScan(Player& player, Map& map, const BattleScanConfig& config) {
+void ScanController::updateBattleAutoScan(Player& player, Map& map, const BattleScanConfig& config, const std::vector<Enemy>& enemies) {
 	const HpLevel currentLevel = player.getHpLevel();
 	if (player.isInBattle() && currentLevel != HpLevel::Dead) {
 
@@ -65,21 +69,21 @@ void ScanController::updateBattleAutoScan(Player& player, Map& map, const Battle
 		//枚举类从上到下的顺序是 Dead < Low < Medium < High，所以可以直接用 < 比较。也就是等
 
 		if (enteredBattle || droppedToLowerLevel) {
-			scan(player, map, automaticIntervalSeconds);
+			scan(player, map, automaticIntervalSeconds, enemies);
 		}
 		else {
-			tryScanAutomatically(player, map, automaticIntervalSeconds);
+			tryScanAutomatically(player, map, automaticIntervalSeconds, enemies);
 		}
 	}
 	player.setWasInBattle(player.isInBattle());
 	previousHpLevel_ = currentLevel;
 }
 
-bool ScanController::tryScanAutomatically(const Player& player, Map& map, double automaticIntervalSeconds) {
+bool ScanController::tryScanAutomatically(const Player& player, Map& map, double automaticIntervalSeconds, const std::vector<Enemy>& enemies) {
 	if (!canScanAutomatically(player)) {
 		return false;
 	}
-	scan(player, map, automaticIntervalSeconds);
+	scan(player, map, automaticIntervalSeconds, enemies);
 	return true;
 }
 
@@ -117,24 +121,51 @@ void ScanController::updateScanTime(double elapsedSeconds) {
 	}
 };
 
-void ScanController::scan(const Player& player, Map& map,double scanIntervalSeconds) {
+void ScanController::updateSnapshotRemainingSeconds(double elapsedSeconds) {
+	if (enemySnapshotRemainingSeconds_ > 0.0) {
+		enemySnapshotRemainingSeconds_ = std::max(0.0, enemySnapshotRemainingSeconds_ - elapsedSeconds);
+		if (enemySnapshotRemainingSeconds_ == 0.0) {
+			enemySnapshotPositions_.clear();
+		}
+	}
+};
+
+const std::vector<Position>& ScanController::getEnemySnapshotPositions() const {
+	return enemySnapshotPositions_;
+}
+
+void ScanController::scan(const Player& player, Map& map, double scanIntervalSeconds, const std::vector<Enemy>& enemies) {
 	const Position playerPosition = player.getPosition();
-	double scanRadiusSquared = scanRadiusCells_ * scanRadiusCells_;
-	double rowOffset = 0;
-	double columnOffset = 0;
+	const double scanRadiusSquared = scanRadiusCells_ * scanRadiusCells_;
+
+	//lamda表达式 。想在函数体里就地写一段可调用逻辑，lambda 是最常用的写法
+	// //[&] 可以按引用使用外层函数中实际用到的局部变量和参数，
+	// playerPosition、scanRadiusSquared 和 map
+	// target 则是每次调用时传进来的参数
+	const auto isInsideScanAndVisible = [&](Position target) {
+		const double rowOffset = static_cast<double>(target.row - playerPosition.row);
+		const double columnOffset = static_cast<double>(target.column - playerPosition.column);
+		const double distanceSquared = rowOffset * rowOffset + columnOffset * columnOffset;
+		return distanceSquared <= scanRadiusSquared && map.hasLineOfSight(playerPosition, target);
+	};
+
 	const auto& cells = map.getMap();
 	for (int i = 0;i < cells.size();i++) {
 		for (int j = 0;j < cells[i].size();j++) {
-			rowOffset = playerPosition.row - i;
-			columnOffset = playerPosition.column - j;
-			double distanceSquared = rowOffset * rowOffset + columnOffset * columnOffset;
-
-			if (distanceSquared <= scanRadiusSquared && map.hasLineOfSight(playerPosition, Position{ i, j })) {
+			if (isInsideScanAndVisible(Position{ i, j })) {
 				map.markScanned(i, j);
 			}
-			
 		}
 	}
+
+	enemySnapshotPositions_.clear();
+	for (const Enemy& enemy : enemies) {
+		const Position enemyPosition = enemy.getPosition();
+		if (isInsideScanAndVisible(enemyPosition)) {
+			enemySnapshotPositions_.push_back(enemyPosition);
+		}
+	}
+	enemySnapshotRemainingSeconds_ = enemySnapshotDurationSeconds_;
 	setScanCooldownRemainingSeconds(scanIntervalSeconds);
 	
 }

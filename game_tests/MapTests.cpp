@@ -5,7 +5,9 @@
 #include <stdexcept>
 #include "../game_core/Player.hpp"
 #include "../game_core/ScanController.hpp"
+#include "../game_core/Enemy.hpp"
 int main() {
+	const std::vector<Enemy> noEnemies;
 	Player healthPlayer({0, 0});
 	assert(healthPlayer.getHpLevel() == HpLevel::High);
 	healthPlayer.setHealth(61);
@@ -162,10 +164,10 @@ int main() {
 	}
 
 	map.setMap({ ".*." });
-	ScanController scanController(0.0, 3);
+	ScanController scanController(0.0, 3, 0.5);
 	Player player({0, 0});
 	assert(scanController.canScanManually(player));
-	const bool firstManualScan = scanController.tryScanManually(player, map, 5.0);
+	const bool firstManualScan = scanController.tryScanManually(player, map, 5.0, noEnemies);
 	assert(firstManualScan);
 	assert(map.isScanned(0, 1) == true);
 	assert(map.isScanned(0, 2) == false);
@@ -174,7 +176,7 @@ int main() {
 	assert(!scanController.canScanManually(player));
 	Map blockedMap;
 	blockedMap.setMap({ "." });
-	const bool blockedByCooldown = scanController.tryScanManually(player, blockedMap, 2.0);
+	const bool blockedByCooldown = scanController.tryScanManually(player, blockedMap, 2.0, noEnemies);
 	assert(!blockedByCooldown);
 	assert(!blockedMap.isScanned(0, 0));
 	scanController.updateScanTime(4.0);
@@ -184,7 +186,7 @@ int main() {
 	assert(!map.isScanned(0, 2));
 
 	// Each call supplies its own interval, rather than always using five seconds.
-	const bool secondManualScan = scanController.tryScanManually(player, map, 2.0);
+	const bool secondManualScan = scanController.tryScanManually(player, map, 2.0, noEnemies);
 	assert(secondManualScan);
 	assert(!scanController.canScanManually(player));
 	scanController.updateScanTime(1.0);
@@ -195,7 +197,7 @@ int main() {
 	// The controller reads the player's current state on each call.
 	player.setInBattle(true);
 	assert(!scanController.canScanManually(player));
-	const bool blockedByBattle = scanController.tryScanManually(player, blockedMap, 2.0);
+	const bool blockedByBattle = scanController.tryScanManually(player, blockedMap, 2.0, noEnemies);
 	assert(!blockedByBattle);
 	assert(!blockedMap.isScanned(0, 0));
 	const Player otherPlayer({0, 0});
@@ -204,7 +206,7 @@ int main() {
 	assert(scanController.canScanManually(player));
 
 	// Leaving battle preserves the remaining shared cooldown.
-	const bool cooldownBeforeBattleScan = scanController.tryScanManually(player, map, 2.0);
+	const bool cooldownBeforeBattleScan = scanController.tryScanManually(player, map, 2.0, noEnemies);
 	assert(cooldownBeforeBattleScan);
 	player.setInBattle(true);
 	scanController.updateScanTime(1.0);
@@ -222,89 +224,89 @@ int main() {
 	Map battleMap;
 	battleMap.setMap({ "........." });
 	Player battlePlayer({0, 0});
-	ScanController battleScanner(0.0, 1.0);
+	ScanController battleScanner(0.0, 1.0, 0.5);
 	const BattleScanConfig equalIntervals{2.0, 2.0, 2.0};
-	const bool manualBeforeBattle = battleScanner.tryScanManually(battlePlayer, battleMap, 5.0);
+	const bool manualBeforeBattle = battleScanner.tryScanManually(battlePlayer, battleMap, 5.0, noEnemies);
 	assert(manualBeforeBattle);
 	battleScanner.updateScanTime(2.0);
 	battlePlayer.setPosition({0, 4});
 	battlePlayer.setInBattle(true);
-	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals, noEnemies);
 	assert(battleMap.isScanned(0, 4));
 
 	// Staying in battle waits for the automatic interval before the next scan.
 	battlePlayer.setPosition({0, 7});
 	battleScanner.updateScanTime(1.0);
-	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals, noEnemies);
 	assert(!battleMap.isScanned(0, 7));
 	battleScanner.updateScanTime(1.0);
-	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals, noEnemies);
 	assert(battleMap.isScanned(0, 7));
 
 	// Exiting preserves cooldown; entering again triggers a new immediate scan.
 	battlePlayer.setInBattle(false);
-	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals, noEnemies);
 	assert(!battleScanner.canScanManually(battlePlayer));
 	battleScanner.updateScanTime(1.0);
 	assert(!battleScanner.canScanManually(battlePlayer));
 	battlePlayer.setPosition({0, 2});
 	battlePlayer.setInBattle(true);
-	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals);
+	battleScanner.updateBattleAutoScan(battlePlayer, battleMap, equalIntervals, noEnemies);
 	assert(battleMap.isScanned(0, 2));
 
 	// A lower health band scans immediately and starts its own interval.
 	Map healthScanMap;
 	healthScanMap.setMap({std::string(16, '.')});
 	Player scanningPlayer({0, 0});
-	ScanController healthScanner(0.0, 0.0);
+	ScanController healthScanner(0.0, 0.0, 0.5);
 	const BattleScanConfig healthIntervals{3.0, 2.0, 1.2};
 	scanningPlayer.setInBattle(true);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 0));
 	scanningPlayer.setPosition({0, 2});
 	healthScanner.updateScanTime(2.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(!healthScanMap.isScanned(0, 2));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 2));
 	scanningPlayer.setPosition({0, 4});
 	scanningPlayer.setHealth(60);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 4));
 	scanningPlayer.setPosition({0, 6});
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(!healthScanMap.isScanned(0, 6));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 6));
 	scanningPlayer.setPosition({0, 8});
 	scanningPlayer.setHealth(20);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 8));
 	scanningPlayer.setPosition({0, 10});
 	scanningPlayer.setHealth(19);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(!healthScanMap.isScanned(0, 10));
 	healthScanner.updateScanTime(1.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(!healthScanMap.isScanned(0, 10));
 	healthScanner.updateScanTime(0.2);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(healthScanMap.isScanned(0, 10));
 	scanningPlayer.setPosition({0, 12});
 	scanningPlayer.setHealth(0);
 	healthScanner.updateScanTime(10.0);
-	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals);
+	healthScanner.updateBattleAutoScan(scanningPlayer, healthScanMap, healthIntervals, noEnemies);
 	assert(!healthScanMap.isScanned(0, 12));
 	scanningPlayer.setInBattle(false);
-	assert(!healthScanner.tryScanManually(scanningPlayer, healthScanMap, 5.0));
+	assert(!healthScanner.tryScanManually(scanningPlayer, healthScanMap, 5.0, noEnemies));
 
 	map.setMap(std::vector<std::string>(11, std::string(11, '.')));
-	ScanController radiusScanner(0.0, 5.0);
+	ScanController radiusScanner(0.0, 5.0, 0.5);
 	const Player radiusPlayer({5, 5});
-	const bool radiusManualScan = radiusScanner.tryScanManually(radiusPlayer, map, 5.0);
+	const bool radiusManualScan = radiusScanner.tryScanManually(radiusPlayer, map, 5.0, noEnemies);
 	assert(radiusManualScan);
 	assert(map.isScanned(8, 9)); // Distance five: include the circular boundary.
 	assert(!map.isScanned(9, 9)); // Outside the circle.

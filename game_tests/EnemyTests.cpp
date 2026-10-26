@@ -1,6 +1,8 @@
 #include "Enemy.hpp"
+#include "ScanController.hpp"
 #include <cassert>
 #include <cmath>
+#include <vector>
 
 int main() {
     EnemyConfig config{};
@@ -97,4 +99,27 @@ int main() {
     assert(tracker.getPosition() == lossPosition);
     tracker.updateEnemy(0.5, openMap, {0, 0}, false);
     assert(!(tracker.getPosition() == lossPosition));
+
+    // A scan captures enemy positions at that moment; walls and radius limit the snapshot.
+    Map snapshotMap;
+    snapshotMap.setMap({".*...", "....."});
+    const Player observer({0, 0});
+    std::vector<Enemy> snapshotCandidates;
+    snapshotCandidates.emplace_back(Position{1, 0}, config); // Visible.
+    snapshotCandidates.emplace_back(Position{0, 2}, config); // Behind a wall.
+    snapshotCandidates.emplace_back(Position{0, 4}, config); // Outside radius three.
+    ScanController snapshotScanner(0.0, 3.0, 0.5);
+    assert(snapshotScanner.tryScanManually(observer, snapshotMap, 0.0, snapshotCandidates));
+    assert(snapshotScanner.getEnemySnapshotPositions().size() == 1);
+    assert((snapshotScanner.getEnemySnapshotPositions().front() == Position{1, 0}));
+    snapshotScanner.updateSnapshotRemainingSeconds(0.25);
+    assert(snapshotScanner.getEnemySnapshotPositions().size() == 1);
+    snapshotScanner.updateSnapshotRemainingSeconds(0.25);
+    assert(snapshotScanner.getEnemySnapshotPositions().empty());
+
+    // The next scan replaces the old snapshot, even when no enemies are seen.
+    assert(snapshotScanner.tryScanManually(observer, snapshotMap, 0.0, snapshotCandidates));
+    const std::vector<Enemy> noEnemies;
+    assert(snapshotScanner.tryScanManually(observer, snapshotMap, 0.0, noEnemies));
+    assert(snapshotScanner.getEnemySnapshotPositions().empty());
 }
