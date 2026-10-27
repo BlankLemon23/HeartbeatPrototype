@@ -68,7 +68,8 @@ int main() {
 	enemyConfig.stealthDetectionRadiusCells = 3;
 	enemyConfig.stopChaseRadiusCells = 15;
 	enemyConfig.hearSoundRadiusCells = 8;
-
+	enemyConfig.attackIntervalSeconds = 2;
+	enemyConfig.attackDamage = 8;
 	std::vector<Enemy> enemies;
 	enemies.emplace_back(Position{ 1, 11 }, enemyConfig);
 	enemies.emplace_back(Position{ 1, 2 }, enemyConfig);
@@ -114,13 +115,27 @@ int main() {
 
 
 		for (auto& enemy : enemies) {
-			enemy.updateEnemy(elapsedSeconds, map, player.getPosition(), player.isStealthEnabled());
+			enemy.updateEnemy(player, elapsedSeconds, map, player.isStealthEnabled());
 		}
+
+		if (player.getHealth() <= 0) {
+			break;
+		}
+
+		const auto newEnd = std::remove_if(
+			enemies.begin(), enemies.end(),
+			[](const Enemy& enemy) {
+				return enemy.getHealth() <= 0;
+			});
+		//•std::remove_if	是把保留的元素前移，然后由 erase 删除尾部；不能保证“把死亡元素挪到末尾”。
+		//newEnd,指向"保留下来的元素"之后、即"垃圾区"的起点。
+		enemies.erase(newEnd, enemies.end());
 
 		const bool allNotChasing = std::all_of(
 			enemies.begin(), enemies.end(),
 			[](const Enemy& e) { return !e.isChasing(); }
 		);
+
 
 		//语法：•	[] —— 捕获列表,空表示不捕获任何外部变量
 		//•(const Enemy& e) —— 参数, all_of 会依次把每个敌人传进来

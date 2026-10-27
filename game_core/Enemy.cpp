@@ -1,4 +1,5 @@
 #include "Enemy.hpp"
+#include "Player.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -7,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 #include <queue>
+
 //public
 
 Enemy::Enemy(Position startPosition, const EnemyConfig& config)
@@ -18,15 +20,17 @@ Enemy::Enemy(Position startPosition, const EnemyConfig& config)
 
 
 
-void Enemy::updateEnemy(double elapsedSeconds, const Map& map, Position playerPosition, bool playerIsStealth)
+void Enemy::updateEnemy(Player& player, double elapsedSeconds, const Map& map, bool playerIsStealth)
 {
 	
 	if (health_ <= 0) {
 		return;
 	}
-	
+	const Position playerPosition = player.getPosition();
+	tryAttack(player, elapsedSeconds);
 	bool ifEnemyCanSeeThePlayer = canSeePlayer(playerPosition, playerIsStealth, map);
 	const int distanceSquared = calculateSquaredDistanceToTarget(playerPosition);
+
 
 	switch (state_) {
 	case EnemyState::Wandering:
@@ -311,3 +315,25 @@ void Enemy::hearSound(Position soundSource) {
 	soundSourcePosition_ = soundSource;
 	state_ = EnemyState::InvestigatingSound;
 }
+
+void Enemy::takeDamage(int damage) {
+	if (damage <= 0) {
+		return;
+	}
+	health_ = std::max(0,health_ - damage);
+};
+
+void Enemy::tryAttack(Player& player,double elapsedSeconds) {
+	attackCooldownRemainingSeconds_ = std::max(0.0,attackCooldownRemainingSeconds_ - elapsedSeconds);
+	const std::array<Position, 5> offsets = { { { -1, 0 },{ 1, 0 },{ 0, -1 },{ 0, 1 },{ 0,0 } } };
+	for (const Position offset : offsets) {
+		Position checkPosition = { position_.row + offset.row,position_.column + offset.column };
+		if (checkPosition == player.getPosition() && attackCooldownRemainingSeconds_ <= 0) {
+
+				attackCooldownRemainingSeconds_ = config_.attackIntervalSeconds;
+				player.takeDamage(config_.attackDamage);
+
+		}
+	}
+
+};

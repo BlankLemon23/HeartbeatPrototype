@@ -1,4 +1,5 @@
 #include "Player.hpp"
+#include "Enemy.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -136,4 +137,12 @@ void Player::makeSound(Position soundSource, std::vector<Enemy>& enemies) {
 	for (Enemy& enemy : enemies) {
 		enemy.hearSound(soundSource);
 	}
+}
+
+void Player::takeDamage(int damage)
+{
+	if (damage <= 0) {
+		return;
+	}
+	health_ = std::max(0, health_ - damage);
 }

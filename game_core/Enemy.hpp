@@ -3,17 +3,22 @@
 #include "Position.hpp"
 #include <random>
 
+class Player;
+
 
 struct EnemyConfig {
     int startingHealth;
     double moveIntervalSeconds;
     double wanderIntervalSeconds;
+    double attackIntervalSeconds;
     int wanderingRadiusCells;
     double waitAfterLossSeconds;
     int normalDetectionRadiusCells;
     int stealthDetectionRadiusCells;
     int stopChaseRadiusCells;
     int hearSoundRadiusCells;
+    int attackDamage;
+
 };
 
 enum class EnemyState {
@@ -27,13 +32,15 @@ class Enemy {
     //公有的方法外部可以调用 私有方法一般不会被外部调用 才定义为私有
 public:
     Enemy(Position startPosition, const EnemyConfig& config);
-    void updateEnemy(double elapsedSeconds, const Map& map, Position playerPosition, bool playerIsStealth);
+    void updateEnemy(Player& player, double elapsedSeconds, const Map& map, bool playerIsStealth);
     Position getPosition() const;
     int getHealth() const;
     bool isChasing() const;
     void hearSound(Position soundSource);
+    void takeDamage(int damage);
 
 private:
+    void tryAttack(Player& player, double elapsedSeconds);
     bool canHearSound(Position soundSource) const;
     bool canSeePlayer(Position playerPosition, bool playerIsStealth, const Map& map) const;
     bool tryMoveTo(Position nextPosition, const Map& map);
@@ -57,5 +64,6 @@ private:
     double moveCooldownRemainingSeconds_ = 0.0;
     double waitRemainingSeconds_ = 0.0;
     double wanderRemainingSeconds_ = 0.0;
+    double attackCooldownRemainingSeconds_ = 0.0;
     EnemyState state_ = EnemyState::Wandering;
 };
