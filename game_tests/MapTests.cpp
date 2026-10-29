@@ -6,6 +6,7 @@
 #include "../game_core/Player.hpp"
 #include "../game_core/ScanController.hpp"
 #include "../game_core/Enemy.hpp"
+#include "../game_core/Weapons/Molotov.hpp"
 int main() {
 	const std::vector<Enemy> noEnemies;
 	Player healthPlayer({0, 0});
@@ -219,6 +220,36 @@ int main() {
 	map.setMap({ ".*", ".." });
 	assert(!map.hasLineOfSight({0, 0}, {1, 1}));
 	assert(!map.hasLineOfSight({1, 1}, {0, 0}));
+
+	// Preview ignores an unknown wall; real throws still land before it.
+	Map previewMap;
+	previewMap.setMap({".*..."});
+	MolotovConfig previewConfig{};
+	previewConfig.throwRadiusCells = 3;
+	previewConfig.burnRadiusCells = 1;
+	previewConfig.carryLimit = 2;
+	Molotov previewMolotov(previewConfig);
+	assert(!previewMap.hasLineOfSight({0, 0}, {0, 3}));
+	assert((previewMolotov.findValidThrowCells({0, 0}, previewMap) ==
+		std::vector<Position>{{0, 0}, {0, 1}, {0, 2}, {0, 3}}));
+	assert(previewMolotov.tryThrow({0, 0}, {0, 3}, previewMap));
+	assert((previewMolotov.getBurningCells() == std::vector<Position>{{0, 0}, {0, 1}}));
+	previewMap.markScanned(0, 1);
+	assert((previewMolotov.findValidThrowCells({0, 0}, previewMap) ==
+		std::vector<Position>{{0, 0}}));
+	assert(previewMap.hasLineOfSight({0, 0}, {0, 1})); // The first wall stays visible.
+	assert(!previewMolotov.tryThrow({0, 0}, {0, 1}, previewMap));
+	assert(!previewMolotov.tryThrow({0, 0}, {0, 3}, previewMap));
+	assert(previewMolotov.tryThrow({0, 0}, {0, 0}, previewMap)); // Rejected throws kept the last bottle.
+	assert(!previewMolotov.tryThrow({0, 0}, {0, 0}, previewMap));
+
+	// Known terrain uses the same corner rule, including a wall beside the ray.
+	Map previewCornerMap;
+	previewCornerMap.setMap({".*", ".."});
+	assert(previewCornerMap.hasLineOfSight({0, 0}, {1, 1}, SightMode::KnownTerrain));
+	previewCornerMap.markScanned(0, 1);
+	assert(!previewCornerMap.hasLineOfSight({0, 0}, {1, 1}, SightMode::KnownTerrain));
+	assert(!previewCornerMap.hasLineOfSight({1, 1}, {0, 0}, SightMode::KnownTerrain));
 
 	// Entering battle scans immediately, even with a manual cooldown remaining.
 	Map battleMap;

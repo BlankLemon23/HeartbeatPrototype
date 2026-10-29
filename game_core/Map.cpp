@@ -62,7 +62,7 @@ bool Map::markScanned(int row, int column) {
 	return true;
 }
 
-bool Map::hasLineOfSight(Position start, Position target) const {
+bool Map::hasLineOfSight(Position start, Position target, SightMode mode) const {
 	if (classifyCell(target.row, target.column) == CellType::OutOfBounds 
 		|| 
 		classifyCell(start.row, start.column) == CellType::OutOfBounds) {
@@ -116,13 +116,8 @@ bool Map::hasLineOfSight(Position start, Position target) const {
 	while (!(start == target)) {
 		if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
 			// A wall touching the ray at a grid corner blocks cells behind it.
-			if (classifyCell(start.row + rowStep, start.column) == CellType::Wall 
-				||
-				classifyCell(start.row, start.column + columnStep) == CellType::Wall
-				|| 
-				classifyCell(start.row + rowStep, start.column) == CellType::OutOfBounds
-				|| 
-				classifyCell(start.row, start.column + columnStep) == CellType::OutOfBounds) {
+			if (blocksLineOfSight({start.row + rowStep, start.column}, mode) ||
+				blocksLineOfSight({start.row, start.column + columnStep}, mode)) {
 				return false;
 			}
 			start.row += rowStep;
@@ -143,12 +138,23 @@ bool Map::hasLineOfSight(Position start, Position target) const {
 		if (start == target) {
 			return true; //三个分支写完成一次跨界 再判断最后的位置是否是墙
 		}
-		if (classifyCell(start.row, start.column) == CellType::Wall
-			||
-			classifyCell(start.row, start.column) == CellType::OutOfBounds) {
+		if (blocksLineOfSight(start, mode)) {
 			return false;
 		}
 	}
 	return true;
 
+}
+bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
+	const CellType cellType = classifyCell(cell.row, cell.column);
+	if (cellType == CellType::OutOfBounds) {
+		return true;
+	}
+	if (cellType != CellType::Wall) {
+		return false;
+	}
+	if (mode == SightMode::RealTerrain) {
+		return true;
+	}
+	return isScanned(cell.row, cell.column);   // 只剩 KnownTerrain + Wall
 }

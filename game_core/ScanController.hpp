@@ -9,9 +9,9 @@ class Enemy;
 
 // Positive intervals in seconds; supplied by the caller as one configuration.
 struct BattleScanConfig {
-    double highHealthIntervalSeconds;
-    double mediumHealthIntervalSeconds;
-    double lowHealthIntervalSeconds;
+    double highHealthIntervalSeconds = 3.0;
+    double mediumHealthIntervalSeconds = 2.0;
+    double lowHealthIntervalSeconds = 1.2;
 };
 
 class ScanController {

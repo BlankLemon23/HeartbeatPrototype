@@ -7,17 +7,17 @@ class Player;
 
 
 struct EnemyConfig {
-    int startingHealth;
-    double moveIntervalSeconds;
-    double wanderIntervalSeconds;
-    double attackIntervalSeconds;
-    int wanderingRadiusCells;
-    double waitAfterLossSeconds;
-    int normalDetectionRadiusCells;
-    int stealthDetectionRadiusCells;
-    int stopChaseRadiusCells;
-    int hearSoundRadiusCells;
-    int attackDamage;
+    int startingHealth = 100;
+    double moveIntervalSeconds = 2.0;
+    double wanderIntervalSeconds = 0.5;
+    double attackIntervalSeconds = 2.0;
+    int wanderingRadiusCells = 3;
+    double waitAfterLossSeconds = 2.0;
+    int normalDetectionRadiusCells = 8;
+    int stealthDetectionRadiusCells = 3;
+    int stopChaseRadiusCells = 15;
+    int hearSoundRadiusCells = 8;
+    int attackDamage = 8;
 
 };
 
