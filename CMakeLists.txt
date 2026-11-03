@@ -9,7 +9,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(raylib)
 
-add_library(game_core STATIC game_core/Map.cpp game_core/Position.cpp game_core/Player.cpp game_core/ScanController.cpp game_core/Enemy.cpp "game_core/Weapons/Molotov.cpp")
+add_library(game_core STATIC
+    game_core/Map.cpp
+    game_core/Position.cpp
+    game_core/Player.cpp
+    game_core/ScanController.cpp
+    game_core/Enemy.cpp
+    game_core/Sound.cpp
+    game_core/Weapons/Gun.hpp
+    game_core/Weapons/Molotov.cpp
+    game_core/Weapons/DecoyMine.cpp
+    game_core/Weapons/Throwing.cpp
+    game_core/Weapons/Gun.cpp
+)
 target_include_directories(game_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/game_core")
 target_compile_features(game_core PUBLIC cxx_std_17)
 if(MSVC)
@@ -25,17 +37,23 @@ target_link_libraries(game_tests PRIVATE game_core)
 add_executable(enemy_tests game_tests/EnemyTests.cpp)
 target_link_libraries(enemy_tests PRIVATE game_core)
 
+add_executable(gun_tests game_tests/GunTests.cpp)
+target_link_libraries(gun_tests PRIVATE game_core)
+
 # Keep assertions active in the test executable in every build configuration.
 if(MSVC)
     target_compile_options(game_tests PRIVATE /UNDEBUG)
     target_compile_options(enemy_tests PRIVATE /UNDEBUG)
+    target_compile_options(gun_tests PRIVATE /UNDEBUG)
 else()
     target_compile_options(game_tests PRIVATE -UNDEBUG)
     target_compile_options(enemy_tests PRIVATE -UNDEBUG)
+    target_compile_options(gun_tests PRIVATE -UNDEBUG)
 endif()
 
 enable_testing()
 add_test(NAME map_rules COMMAND game_tests)
 add_test(NAME enemy_behavior COMMAND enemy_tests)
+add_test(NAME gun_behavior COMMAND gun_tests)
 
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT game_desktop)

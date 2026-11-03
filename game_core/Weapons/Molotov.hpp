@@ -20,7 +20,8 @@ struct MolotovConfig {
 
 class Molotov {
 public:
-	Molotov(MolotovConfig config);
+	explicit Molotov(MolotovConfig config);
+	int getRemainingCount() const;
 	bool tryThrow(Position playerPosition, Position clickedPosition, const Map& map);
 	void updateBurningArea(double elapsedSeconds, Player& player, std::vector<Enemy>& enemies,const Map& map);
 	std::vector<Position> getBurningCells() const;
@@ -34,9 +35,7 @@ private:
 	};
 
 	std::vector<Position> collectBurningCells(Position center,const Map& map) const;
-	int calculateSquaredDistanceToTarget(Position startPosition,Position targetPosition) const;
 	void createBurningArea(Position landingPosition, const Map& map);
-	Position findLastFreeCell(const Map& map, Position start, Position target);
 	void burnPlayer(Player& player,const BurningArea& area,const Map& map);
 	void burnEnemy(std::vector<Enemy>& enemies,const BurningArea& area,const Map& map);
 	bool ifInstanceInsideBurningArea(Position instancePosition,Position burningCenter);

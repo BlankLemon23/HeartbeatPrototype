@@ -2,9 +2,6 @@
 
 #include "Map.hpp"
 #include "Position.hpp"
-#include <vector>
-
-class Enemy;
 
 // Keep levels ordered so a smaller value means a lower health band.
 enum class HpLevel {
@@ -32,7 +29,7 @@ struct PlayerConfig {
 
 class Player {
 public:
-    explicit Player(Position startPosition, PlayerConfig config = {});
+    explicit Player(Position startPosition, PlayerConfig config);
 
     bool tryMove(Direction direction, const Map& map);
     void updateMoveCooldown(double elapsedSeconds);
@@ -57,8 +54,6 @@ public:
     double getOutBattleRemainingSeconds() const;
     void updateOutBattleRemainingSeconds(double elapsedSeconds);
     void resetOutBattleRemainingSeconds();
-
-    void makeSound(Position soundSource, std::vector<Enemy>& enemies);
 
     void takeDamage(int damage);
 private:

@@ -7,9 +7,10 @@
 #include "../game_core/ScanController.hpp"
 #include "../game_core/Enemy.hpp"
 #include "../game_core/Weapons/Molotov.hpp"
+#include "../game_core/Weapons/DecoyMine.hpp"
 int main() {
 	const std::vector<Enemy> noEnemies;
-	Player healthPlayer({0, 0});
+	Player healthPlayer({0, 0}, PlayerConfig{});
 	assert(healthPlayer.getHpLevel() == HpLevel::High);
 	healthPlayer.setHealth(61);
 	assert(healthPlayer.getHpLevel() == HpLevel::High);
@@ -152,7 +153,7 @@ int main() {
 	{
 		Map obstacleMap;
 		obstacleMap.setMap({ ".*." , "..." });
-		Player blockedPlayer({0, 0});
+		Player blockedPlayer({0, 0}, PlayerConfig{});
 		const bool hitWall = blockedPlayer.tryMove(Direction::RIGHT, obstacleMap);
 		assert(!hitWall);
 		assert((blockedPlayer.getPosition() == Position{0, 0}));
@@ -166,7 +167,7 @@ int main() {
 
 	map.setMap({ ".*." });
 	ScanController scanController(0.0, 3, 0.5);
-	Player player({0, 0});
+	Player player({0, 0}, PlayerConfig{});
 	assert(scanController.canScanManually(player));
 	const bool firstManualScan = scanController.tryScanManually(player, map, 5.0, noEnemies);
 	assert(firstManualScan);
@@ -201,7 +202,7 @@ int main() {
 	const bool blockedByBattle = scanController.tryScanManually(player, blockedMap, 2.0, noEnemies);
 	assert(!blockedByBattle);
 	assert(!blockedMap.isScanned(0, 0));
-	const Player otherPlayer({0, 0});
+	const Player otherPlayer({0, 0}, PlayerConfig{});
 	assert(scanController.canScanManually(otherPlayer));
 	player.setInBattle(false);
 	assert(scanController.canScanManually(player));
@@ -229,12 +230,19 @@ int main() {
 	previewConfig.burnRadiusCells = 1;
 	previewConfig.carryLimit = 2;
 	Molotov previewMolotov(previewConfig);
+	DecoyMineConfig decoyPreviewConfig{};
+	decoyPreviewConfig.throwRadiusCells = 1;
+	DecoyMine previewDecoy(decoyPreviewConfig);
+	assert((previewDecoy.findValidThrowCells({0, 0}, previewMap) ==
+		std::vector<Position>{{0, 0}, {0, 1}}));
 	assert(!previewMap.hasLineOfSight({0, 0}, {0, 3}));
 	assert((previewMolotov.findValidThrowCells({0, 0}, previewMap) ==
 		std::vector<Position>{{0, 0}, {0, 1}, {0, 2}, {0, 3}}));
 	assert(previewMolotov.tryThrow({0, 0}, {0, 3}, previewMap));
 	assert((previewMolotov.getBurningCells() == std::vector<Position>{{0, 0}, {0, 1}}));
 	previewMap.markScanned(0, 1);
+	assert((previewDecoy.findValidThrowCells({0, 0}, previewMap) ==
+		std::vector<Position>{{0, 0}}));
 	assert((previewMolotov.findValidThrowCells({0, 0}, previewMap) ==
 		std::vector<Position>{{0, 0}}));
 	assert(previewMap.hasLineOfSight({0, 0}, {0, 1})); // The first wall stays visible.
@@ -250,11 +258,21 @@ int main() {
 	previewCornerMap.markScanned(0, 1);
 	assert(!previewCornerMap.hasLineOfSight({0, 0}, {1, 1}, SightMode::KnownTerrain));
 	assert(!previewCornerMap.hasLineOfSight({1, 1}, {0, 0}, SightMode::KnownTerrain));
+	assert((previewCornerMap.findLastFreeCell({0, 0}, {1, 1}) == Position{0, 0}));
+
+	// Landing stops before a wall, including a visible wall used as the target.
+	Map landingMap;
+	landingMap.setMap({"..*.."});
+	assert((landingMap.findLastFreeCell({0, 0}, {0, 4}) == Position{0, 1}));
+	assert((landingMap.findLastFreeCell({0, 4}, {0, 0}) == Position{0, 3}));
+	assert((landingMap.findLastFreeCell({0, 0}, {0, 2}) == Position{0, 1}));
+	assert(landingMap.hasLineOfSight({0, 0}, {0, 2}));
+	assert((landingMap.findLastFreeCell({0, 3}, {0, 8}) == Position{0, 4}));
 
 	// Entering battle scans immediately, even with a manual cooldown remaining.
 	Map battleMap;
 	battleMap.setMap({ "........." });
-	Player battlePlayer({0, 0});
+	Player battlePlayer({0, 0}, PlayerConfig{});
 	ScanController battleScanner(0.0, 1.0, 0.5);
 	const BattleScanConfig equalIntervals{2.0, 2.0, 2.0};
 	const bool manualBeforeBattle = battleScanner.tryScanManually(battlePlayer, battleMap, 5.0, noEnemies);
@@ -288,7 +306,7 @@ int main() {
 	// A lower health band scans immediately and starts its own interval.
 	Map healthScanMap;
 	healthScanMap.setMap({std::string(16, '.')});
-	Player scanningPlayer({0, 0});
+	Player scanningPlayer({0, 0}, PlayerConfig{});
 	ScanController healthScanner(0.0, 0.0, 0.5);
 	const BattleScanConfig healthIntervals{3.0, 2.0, 1.2};
 	scanningPlayer.setInBattle(true);
@@ -336,7 +354,7 @@ int main() {
 
 	map.setMap(std::vector<std::string>(11, std::string(11, '.')));
 	ScanController radiusScanner(0.0, 5.0, 0.5);
-	const Player radiusPlayer({5, 5});
+	const Player radiusPlayer({5, 5}, PlayerConfig{});
 	const bool radiusManualScan = radiusScanner.tryScanManually(radiusPlayer, map, 5.0, noEnemies);
 	assert(radiusManualScan);
 	assert(map.isScanned(8, 9)); // Distance five: include the circular boundary.

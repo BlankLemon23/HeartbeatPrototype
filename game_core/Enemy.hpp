@@ -16,7 +16,6 @@ struct EnemyConfig {
     int normalDetectionRadiusCells = 8;
     int stealthDetectionRadiusCells = 3;
     int stopChaseRadiusCells = 15;
-    int hearSoundRadiusCells = 8;
     int attackDamage = 8;
 
 };
@@ -31,23 +30,22 @@ enum class EnemyState {
 class Enemy {
     //公有的方法外部可以调用 私有方法一般不会被外部调用 才定义为私有
 public:
-    Enemy(Position startPosition, const EnemyConfig& config);
+    explicit Enemy(Position startPosition, EnemyConfig config = {});
     void updateEnemy(Player& player, double elapsedSeconds, const Map& map, bool playerIsStealth);
     Position getPosition() const;
     int getHealth() const;
     bool isChasing() const;
-    void hearSound(Position soundSource);
+    void hearSound(Position soundSource, int soundRadiusCells);
     void takeDamage(int damage);
 
 private:
     void tryAttack(Player& player, double elapsedSeconds);
-    bool canHearSound(Position soundSource) const;
+    bool canHearSound(Position soundSource, int soundRadiusCells) const;
     bool canSeePlayer(Position playerPosition, bool playerIsStealth, const Map& map) const;
     bool tryMoveTo(Position nextPosition, const Map& map);
     bool tryMoveToward(Position targetPosition, const Map& map);
     void wander(const Map& map);
     void stopChasing();
-    int calculateSquaredDistanceToTarget(Position targetPosition) const;
     // Seed once per enemy; retain the generator state between moves.
     std::mt19937 randomEngine_{std::random_device{}()};
     EnemyConfig config_;

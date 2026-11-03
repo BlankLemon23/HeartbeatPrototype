@@ -1,4 +1,5 @@
 #include "Map.hpp"
+#include "Enemy.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -63,88 +64,20 @@ bool Map::markScanned(int row, int column) {
 }
 
 bool Map::hasLineOfSight(Position start, Position target, SightMode mode) const {
-	if (classifyCell(target.row, target.column) == CellType::OutOfBounds 
-		|| 
-		classifyCell(start.row, start.column) == CellType::OutOfBounds) {
+	if (classifyCell(start.row, start.column) == CellType::OutOfBounds ||
+		classifyCell(target.row, target.column) == CellType::OutOfBounds) {
 		return false;
 	}
-
-	if (start == target) {
-		return true;
-	}
-
-	const double startCenterRow = start.row + 0.5;
-	const double startCenterColumn = start.column + 0.5;
-	const double targetCenterRow = target.row + 0.5;
-	const double targetCenterColumn = target.column + 0.5;
-	const double rowDistance = std::abs(targetCenterRow - startCenterRow);
-	const double columnDistance = std::abs(targetCenterColumn - startCenterColumn);
-	const double neverCross = std::numeric_limits<double>::infinity();
-	// 这里比较的是射线到达下一条行边界和列边界的进度。
-// 数学上两个进度相等时，射线恰好穿过格角；但 double 的计算结果可能有极小误差。
-// 因此允许两者相差一点点，仍按穿过格角处理。
-	const double cornerTolerance = 1e-12;
-
-	int rowStep = 0;
-	if (target.row > start.row) {
-		rowStep = 1;
-	}
-	else if (target.row < start.row) {
-		rowStep = -1;
-	}
-	int columnStep = 0;
-	if (target.column > start.column) {
-		columnStep = 1;
-	}
-	else if (target.column < start.column) {
-		columnStep = -1;
-	}//这样写避免了每次需要通过三元运算进行判断
-
-	double nextRowProgress = neverCross;
-	double rowProgressStep = neverCross;
-	if (rowDistance > 0.0) {
-		nextRowProgress = 0.5 / rowDistance;
-		rowProgressStep = 1.0 / rowDistance;
-	}
-	double nextColumnProgress = neverCross;
-	double columnProgressStep = neverCross;
-	if (columnDistance > 0.0) {
-		nextColumnProgress = 0.5 / columnDistance;
-		columnProgressStep = 1.0 / columnDistance;
-	}
-
-	while (!(start == target)) {
-		if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
-			// A wall touching the ray at a grid corner blocks cells behind it.
-			if (blocksLineOfSight({start.row + rowStep, start.column}, mode) ||
-				blocksLineOfSight({start.row, start.column + columnStep}, mode)) {
-				return false;
-			}
-			start.row += rowStep;
-			start.column += columnStep;
-			nextRowProgress += rowProgressStep;
-			nextColumnProgress += columnProgressStep;
-		}
-		else if (nextColumnProgress < nextRowProgress) {
-			start.column += columnStep;
-			nextColumnProgress += columnProgressStep;
-		}
-		else {
-			start.row += rowStep;
-			nextRowProgress += rowProgressStep;
-		}
-
-
-		if (start == target) {
-			return true; //三个分支写完成一次跨界 再判断最后的位置是否是墙
-		}
-		if (blocksLineOfSight(start, mode)) {
-			return false;
-		}
-	}
-	return true;
-
+	return traceLine(start, {target.row + 0.5, target.column + 0.5}, mode, {}).targetVisible;
+    //{} 会被编译器解释成「一个刚构造出来的、空的 std::vector<Enemy>」——等价于 std::vector<Enemy>{}
+    // ，也就是 size 为 0、没有元素的 vector。它的含义是：「这次调用不关心敌人」。
 }
+
+Position Map::findLastFreeCell(Position start, Position target) const {
+	return traceLine(start, {target.row + 0.5, target.column + 0.5},
+                     SightMode::RealTerrain, {}).lastFreeCell;
+}
+
 bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
 	const CellType cellType = classifyCell(cell.row, cell.column);
 	if (cellType == CellType::OutOfBounds) {
@@ -157,4 +90,110 @@ bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
 		return true;
 	}
 	return isScanned(cell.row, cell.column);   // 只剩 KnownTerrain + Wall
+}
+
+Map::LineTraceResult Map::traceLine(Position start, GridPoint target, SightMode mode,
+                                    const std::vector<Enemy>& enemies) const
+{
+    if (classifyCell(start.row, start.column) == CellType::OutOfBounds) {
+        return {start, false};
+    }
+
+    const double startCenterRow = start.row + 0.5;
+    const double startCenterColumn = start.column + 0.5;
+    const double rowDistance = std::abs(target.row - startCenterRow);
+    const double columnDistance = std::abs(target.column - startCenterColumn);
+    const Position targetCell{
+        static_cast<int>(std::floor(target.row)),
+        static_cast<int>(std::floor(target.column))
+    };
+    const double neverCross = std::numeric_limits<double>::infinity();
+    // 这里比较的是射线到达下一条行边界和列边界的进度。
+    // 数学上两个进度相等时，射线恰好穿过格角；但 double 的计算结果可能有极小误差。
+    // 因此允许两者相差一点点，仍按穿过格角处理。
+    const double cornerTolerance = 1e-12;
+
+    int rowStep = 0;
+    if (target.row > startCenterRow) {
+        rowStep = 1;
+    }
+    else if (target.row < startCenterRow) {
+        rowStep = -1;
+    }
+    int columnStep = 0;
+    if (target.column > startCenterColumn) {
+        columnStep = 1;
+    }
+    else if (target.column < startCenterColumn) {
+        columnStep = -1;
+    }
+
+    double nextRowProgress = neverCross;
+    double rowProgressStep = neverCross;
+    if (rowDistance > 0.0) {
+        nextRowProgress = 0.5 / rowDistance;
+        rowProgressStep = 1.0 / rowDistance;
+    }
+    double nextColumnProgress = neverCross;
+    double columnProgressStep = neverCross;
+    if (columnDistance > 0.0) {
+        nextColumnProgress = 0.5 / columnDistance;
+        columnProgressStep = 1.0 / columnDistance;
+    }
+
+    Position current = start;
+    while (true) {
+        // Inspect every enemy at this cell before advancing the ray once.
+        for (const Enemy& enemy : enemies) {
+            if (enemy.getPosition() == current) {
+                return {current, current == targetCell, current};
+            }
+        }
+
+        // Progress 1 is the exact endpoint, even when it is outside the map.
+        const double nextBoundaryProgress = std::min(nextRowProgress, nextColumnProgress);
+        if (nextBoundaryProgress > 1.0 + cornerTolerance) {
+            return {current, true};
+        }
+
+        Position next = current;
+        if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
+            // A wall touching the ray at a grid corner blocks cells behind it.
+            if (blocksLineOfSight({current.row + rowStep, current.column}, mode) ||
+                blocksLineOfSight({current.row, current.column + columnStep}, mode)) {
+                return {current, false};
+            }
+            next.row += rowStep;
+            next.column += columnStep;
+            nextRowProgress += rowProgressStep;
+            nextColumnProgress += columnProgressStep;
+        }
+        else if (nextColumnProgress < nextRowProgress) {
+            next.column += columnStep;
+            nextColumnProgress += columnProgressStep;
+        }
+        else {
+            next.row += rowStep;
+            nextRowProgress += rowProgressStep;
+        }
+
+        const CellType nextCell = classifyCell(next.row, next.column);
+        if (blocksLineOfSight(next, mode)) {
+            // A target wall is visible, while the landing cell stays before it.
+            return {current, next == targetCell && nextCell != CellType::OutOfBounds};
+        }
+        current = next;
+    }
+}
+//current ──复制──▶ next ──推进一格──▶ next ──验证通过──▶ current
+//↑                                                        │
+//└────────────────── 下一轮继续 ─────────────────────────┘
+//Position next = current; // 从当前格出发，准备候选格
+
+// 推进 next，检查它是否被阻挡
+
+//current = next;          // 检查通过，正式进入下一格
+Position Map::findFirstEnemyPositionFromPlayerToTarget(
+    Position playerStart, GridPoint target, const std::vector<Enemy>& enemies) const {
+    return traceLine(playerStart, target, SightMode::RealTerrain, enemies).firstEnemyPosition;
 }

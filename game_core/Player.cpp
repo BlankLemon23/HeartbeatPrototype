@@ -1,5 +1,4 @@
 #include "Player.hpp"
-#include "Enemy.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -131,12 +130,6 @@ void Player::updateOutBattleRemainingSeconds(double elapsedSeconds) {
 
 void Player::resetOutBattleRemainingSeconds() {
 	outBattleRemainingSeconds_ = config_.outBattleIntervalSeconds;
-}
-
-void Player::makeSound(Position soundSource, std::vector<Enemy>& enemies) {
-	for (Enemy& enemy : enemies) {
-		enemy.hearSound(soundSource);
-	}
 }
 
 void Player::takeDamage(int damage)

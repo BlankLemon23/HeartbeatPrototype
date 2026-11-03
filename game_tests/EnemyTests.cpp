@@ -1,6 +1,9 @@
 #include "Enemy.hpp"
 #include "Player.hpp"
 #include "ScanController.hpp"
+#include "Sound.hpp"
+#include "Weapons/DecoyMine.hpp"
+#include <string>
 #include <cassert>
 #include <cmath>
 #include <vector>
@@ -8,7 +11,7 @@
 // Existing behavior tests provide a player at the requested position.
 void updateEnemyAt(Enemy& enemy, double elapsedSeconds, const Map& map,
                    Position playerPosition, bool playerIsStealth) {
-    Player player(playerPosition);
+    Player player(playerPosition, PlayerConfig{});
     enemy.updateEnemy(player, elapsedSeconds, map, playerIsStealth);
 }
 
@@ -22,12 +25,11 @@ int main() {
     config.normalDetectionRadiusCells = 8;
     config.stealthDetectionRadiusCells = 3;
     config.stopChaseRadiusCells = 15;
-    config.hearSoundRadiusCells = 8;
     config.attackIntervalSeconds = 2.0;
     config.attackDamage = 8;
 
     // Positive damage lowers health; zero and negative values do not heal.
-    Player injuredPlayer({1, 1});
+    Player injuredPlayer({1, 1}, PlayerConfig{});
     injuredPlayer.takeDamage(0);
     injuredPlayer.takeDamage(-5);
     assert(injuredPlayer.getHealth() == 100);
@@ -72,6 +74,8 @@ int main() {
     assert(!watcher.isChasing());
     updateEnemyAt(watcher, 0.0, detectionMap, {0, 4}, false);
     assert(watcher.isChasing());
+    watcher.hearSound({0, 0}, 12);
+    assert(watcher.isChasing()); // Sound must not interrupt an active chase.
     updateEnemyAt(watcher, 0.0, detectionMap, {0, 4}, true);
     assert(watcher.isChasing());
 
@@ -137,7 +141,7 @@ int main() {
     // A scan captures enemy positions at that moment; walls and radius limit the snapshot.
     Map snapshotMap;
     snapshotMap.setMap({".*...", "....."});
-    const Player observer({0, 0});
+    const Player observer({0, 0}, PlayerConfig{});
     std::vector<Enemy> snapshotCandidates;
     snapshotCandidates.emplace_back(Position{1, 0}, config); // Visible.
     snapshotCandidates.emplace_back(Position{0, 2}, config); // Behind a wall.
@@ -160,14 +164,13 @@ int main() {
     // Sound crosses a wall: only listeners in range investigate the fixed source.
     Map soundMap;
     soundMap.setMap({".....", ".***.", "....."});
-    Player soundOwner({2, 2});
+    Player soundOwner({2, 2}, PlayerConfig{});
     EnemyConfig soundConfig = config;
     soundConfig.wanderingRadiusCells = 0;
-    soundConfig.hearSoundRadiusCells = 2;
     std::vector<Enemy> listeners;
     listeners.emplace_back(Position{0, 2}, soundConfig);
     listeners.emplace_back(Position{0, 0}, soundConfig);
-    soundOwner.makeSound(soundOwner.getPosition(), listeners);
+    makeSound(soundOwner.getPosition(), 2, listeners);
     for (Enemy& listener : listeners) {
         updateEnemyAt(listener, 0.5, soundMap, soundOwner.getPosition(), false);
     }
@@ -175,13 +178,38 @@ int main() {
     assert((listeners[1].getPosition() == Position{0, 0}));
     assert(!listeners[0].isChasing());
 
+    // The source's radius applies even beyond the old fixed eight-cell limit.
+    Map soundRangeMap;
+    soundRangeMap.setMap({std::string(13, '.')});
+    EnemyConfig soundRangeConfig = config;
+    soundRangeConfig.normalDetectionRadiusCells = 0;
+    soundRangeConfig.stealthDetectionRadiusCells = 0;
+    soundRangeConfig.wanderingRadiusCells = 0;
+    std::vector<Enemy> rangeListeners;
+    rangeListeners.emplace_back(Position{0, 10}, soundRangeConfig);
+    const Position sourcePosition{0, 0};
+
+    DecoyMineConfig quietDecoyConfig{};
+    quietDecoyConfig.soundRadiusCells = 8;
+    DecoyMine quietDecoy(quietDecoyConfig);
+    assert(quietDecoy.tryThrow(sourcePosition, sourcePosition, soundRangeMap, rangeListeners));
+    updateEnemyAt(rangeListeners.front(), 0.0, soundRangeMap, sourcePosition, false);
+    assert((rangeListeners.front().getPosition() == Position{0, 10}));
+
+    DecoyMineConfig loudDecoyConfig = quietDecoyConfig;
+    loudDecoyConfig.soundRadiusCells = 12;
+    DecoyMine loudDecoy(loudDecoyConfig);
+    assert(loudDecoy.tryThrow(sourcePosition, sourcePosition, soundRangeMap, rangeListeners));
+    updateEnemyAt(rangeListeners.front(), 0.0, soundRangeMap, sourcePosition, false);
+    assert((rangeListeners.front().getPosition() == Position{0, 9}));
+
     // An unreachable sound source ends investigation and resumes local wandering.
     Map separatedMap;
     separatedMap.setMap({"...", "***", "..."});
     EnemyConfig separatedConfig = config;
     separatedConfig.wanderingRadiusCells = 1;
     Enemy separatedListener({0, 1}, separatedConfig);
-    separatedListener.hearSound({2, 1});
+    separatedListener.hearSound({2, 1}, 8);
     updateEnemyAt(separatedListener, 0.0, separatedMap, {2, 1}, false);
     assert((separatedListener.getPosition() == Position{0, 1}));
     updateEnemyAt(separatedListener, separatedConfig.wanderIntervalSeconds,

@@ -11,7 +11,7 @@
 
 //public
 
-Enemy::Enemy(Position startPosition, const EnemyConfig& config)
+Enemy::Enemy(Position startPosition, EnemyConfig config)
     : config_(config),
     position_(startPosition),
     wanderCenter_(startPosition),
@@ -29,7 +29,7 @@ void Enemy::updateEnemy(Player& player, double elapsedSeconds, const Map& map, b
 	const Position playerPosition = player.getPosition();
 	tryAttack(player, elapsedSeconds);
 	bool ifEnemyCanSeeThePlayer = canSeePlayer(playerPosition, playerIsStealth, map);
-	const int distanceSquared = calculateSquaredDistanceToTarget(playerPosition);
+	const int distanceSquared = calculateSquaredDistanceToTarget(playerPosition,position_);
 
 
 	switch (state_) {
@@ -294,22 +294,18 @@ wanderRemainingSeconds_ = config_.wanderIntervalSeconds;
 waitRemainingSeconds_ = config_.waitAfterLossSeconds;	
 }
 
-int Enemy::calculateSquaredDistanceToTarget(Position targetPosition) const
-{
-	int rowOffset = targetPosition.row - position_.row;
-	int columnOffset = targetPosition.column - position_.column;
-	return rowOffset * rowOffset + columnOffset * columnOffset;
-		    
+
+
+bool Enemy::canHearSound(Position soundSource, int soundRadiusCells) const {
+	if (soundRadiusCells < 0) {
+		return false;
+	}
+	const int distanceSquaredToSound = calculateSquaredDistanceToTarget(soundSource, position_);
+	return distanceSquaredToSound <= soundRadiusCells * soundRadiusCells;
 }
 
-bool Enemy::canHearSound(Position soundSource) const {
-	const int distanceSquaredToSound = calculateSquaredDistanceToTarget(soundSource);
-	const int hearingRadius = config_.hearSoundRadiusCells;
-	return distanceSquaredToSound <= hearingRadius * hearingRadius;
-}
-
-void Enemy::hearSound(Position soundSource) {
-	if (health_ <= 0 || state_ == EnemyState::Chasing || !canHearSound(soundSource)) {
+void Enemy::hearSound(Position soundSource, int soundRadiusCells) {
+	if (health_ <= 0 || state_ == EnemyState::Chasing || !canHearSound(soundSource, soundRadiusCells)) {
 		return;
 	}
 	soundSourcePosition_ = soundSource;

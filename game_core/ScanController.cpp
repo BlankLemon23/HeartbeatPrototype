@@ -137,15 +137,11 @@ const std::vector<Position>& ScanController::getEnemySnapshotPositions() const {
 void ScanController::scan(const Player& player, Map& map, double scanIntervalSeconds, const std::vector<Enemy>& enemies) {
 	const Position playerPosition = player.getPosition();
 	const double scanRadiusSquared = scanRadiusCells_ * scanRadiusCells_;
+	
 
-	//lamda表达式 。想在函数体里就地写一段可调用逻辑，lambda 是最常用的写法
-	// //[&] 可以按引用使用外层函数中实际用到的局部变量和参数，
-	// playerPosition、scanRadiusSquared 和 map
-	// target 则是每次调用时传进来的参数
+	//lamda表达式 &表示可以捕获外部参数 比如playePosition
 	const auto isInsideScanAndVisible = [&](Position target) {
-		const double rowOffset = static_cast<double>(target.row - playerPosition.row);
-		const double columnOffset = static_cast<double>(target.column - playerPosition.column);
-		const double distanceSquared = rowOffset * rowOffset + columnOffset * columnOffset;
+		const double distanceSquared = calculateSquaredDistanceToTarget(playerPosition, target);
 		return distanceSquared <= scanRadiusSquared && map.hasLineOfSight(playerPosition, target);
 	};
 
