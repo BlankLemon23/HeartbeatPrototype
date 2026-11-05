@@ -1,7 +1,7 @@
 #include "Weapons/Gun.hpp"
-#include "Enemy.hpp"
-#include "Map.hpp"
-#include "Player.hpp"
+#include "Actors/Enemy.hpp"
+#include "World/Map.hpp"
+#include "Actors/Player.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cmath>

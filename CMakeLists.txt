@@ -10,17 +10,19 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(raylib)
 
 add_library(game_core STATIC
-    game_core/Map.cpp
-    game_core/Position.cpp
-    game_core/Player.cpp
-    game_core/ScanController.cpp
-    game_core/Enemy.cpp
-    game_core/Sound.cpp
+    game_core/World/Map.cpp
+    game_core/World/Position.cpp
+    game_core/Actors/Player.cpp
+    game_core/Perception/ScanController.cpp
+    game_core/Actors/Enemy.cpp
+    game_core/Perception/Sound.cpp
     game_core/Weapons/Gun.hpp
     game_core/Weapons/Molotov.cpp
     game_core/Weapons/DecoyMine.cpp
     game_core/Weapons/Throwing.cpp
     game_core/Weapons/Gun.cpp
+    game_core/Resources/ResourceManager.cpp
+    game_core/Sessions/GameSession.cpp
 )
 target_include_directories(game_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/game_core")
 target_compile_features(game_core PUBLIC cxx_std_17)
@@ -28,7 +30,11 @@ if(MSVC)
     target_compile_options(game_core PUBLIC /utf-8)
 endif()
 
-add_executable(game_desktop game_desktop/main.cpp)
+add_executable(game_desktop
+    game_desktop/main.cpp
+    game_desktop/GameRenderer.cpp
+    game_desktop/GameRenderer.hpp
+)
 target_link_libraries(game_desktop PRIVATE game_core raylib)
 
 add_executable(game_tests game_tests/MapTests.cpp)

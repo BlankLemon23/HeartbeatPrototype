@@ -1,17 +1,16 @@
 #include "Gun.hpp"
 #include <algorithm>
 #include <cmath>
-#include "Map.hpp"
-#include "Position.hpp"
-#include "Enemy.hpp"
-#include "Sound.hpp"
+#include "World/Map.hpp"
+#include "World/Position.hpp"
+#include "Actors/Enemy.hpp"
+#include "Perception/Sound.hpp"
 
 Gun::Gun(GunConfig config)
+	: config_(config),
+	  ammoInMagazine_(config.initialMagazineAmmo),
+	  reserveAmmo_(config.initialReserveAmmo)
 {
-	config_ = config;
-	ammoInMagazine_ = config_.initialMagazineAmmo;
-	reserveAmmo_ = config_.initialReserveAmmo;
-
 }
 
 void Gun::update(double elapsedSeconds) {

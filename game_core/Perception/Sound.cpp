@@ -1,5 +1,5 @@
 #include "Sound.hpp"
-#include "Enemy.hpp"
+#include "Actors/Enemy.hpp"
 
 void makeSound(Position soundSource, int soundRadiusCells,
                std::vector<Enemy>& enemies) {

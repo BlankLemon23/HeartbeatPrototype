@@ -1,7 +1,7 @@
 #pragma once
-#include "Map.hpp"
-#include "Player.hpp"
-#include "Position.hpp"
+#include "World/Map.hpp"
+#include "Actors/Player.hpp"
+#include "World/Position.hpp"
 #include <optional>
 #include <vector>
 

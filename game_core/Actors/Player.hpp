@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Map.hpp"
-#include "Position.hpp"
+#include "World/Map.hpp"
+#include "World/Position.hpp"
 
 // Keep levels ordered so a smaller value means a lower health band.
 enum class HpLevel {
@@ -56,6 +56,7 @@ public:
     void resetOutBattleRemainingSeconds();
 
     void takeDamage(int damage);
+
 private:
     // Fixed settings are separate from the state that changes each frame.
     PlayerConfig config_;

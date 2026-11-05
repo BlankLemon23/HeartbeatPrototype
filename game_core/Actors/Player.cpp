@@ -1,4 +1,5 @@
 #include "Player.hpp"
+#include "Player.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -139,3 +140,4 @@ void Player::takeDamage(int damage)
 	}
 	health_ = std::max(0, health_ - damage);
 }
+

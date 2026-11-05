@@ -1,13 +1,13 @@
 #include <string>
 #include <vector>
-#include "../game_core/Map.hpp"
+#include "World/Map.hpp"
 #include <cassert>
 #include <stdexcept>
-#include "../game_core/Player.hpp"
-#include "../game_core/ScanController.hpp"
-#include "../game_core/Enemy.hpp"
-#include "../game_core/Weapons/Molotov.hpp"
-#include "../game_core/Weapons/DecoyMine.hpp"
+#include "Actors/Player.hpp"
+#include "Perception/ScanController.hpp"
+#include "Actors/Enemy.hpp"
+#include "Weapons/Molotov.hpp"
+#include "Weapons/DecoyMine.hpp"
 int main() {
 	const std::vector<Enemy> noEnemies;
 	Player healthPlayer({0, 0}, PlayerConfig{});

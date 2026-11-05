@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Position.hpp"
+#include "World/Position.hpp"
 #include <vector>
 
 class Enemy;

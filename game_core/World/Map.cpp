@@ -1,5 +1,5 @@
 #include "Map.hpp"
-#include "Enemy.hpp"
+#include "Actors/Enemy.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>

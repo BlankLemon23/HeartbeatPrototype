@@ -1,9 +1,9 @@
 #pragma once
-#include "Position.hpp"
-#include "Map.hpp"
+#include "World/Position.hpp"
+#include "World/Map.hpp"
 #include <vector>
-#include "Player.hpp"
-#include "Enemy.hpp"
+#include "Actors/Player.hpp"
+#include "Actors/Enemy.hpp"
 
 struct MolotovConfig {
 	int throwRadiusCells = 8;
@@ -13,6 +13,7 @@ struct MolotovConfig {
 	int burnDamageEnemy = 30;
 	int burnDamagePlayer = 10;
 	int carryLimit = 5;
+	int initialCount = 2;
 };
 
 
@@ -26,6 +27,8 @@ public:
 	void updateBurningArea(double elapsedSeconds, Player& player, std::vector<Enemy>& enemies,const Map& map);
 	std::vector<Position> getBurningCells() const;
 	std::vector<Position> findValidThrowCells(Position playerPosition, const Map& map) const;
+	void addMolotov(int amount);
+	int getCarryLimit() const;
 private:
 	struct BurningArea {
 		Position burningCenter;

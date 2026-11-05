@@ -1,11 +1,14 @@
 #include "Molotov.hpp"
 #include "Molotov.hpp"
+#include "Molotov.hpp"
+#include "Molotov.hpp"
 #include "Throwing.hpp"
 #include <stdexcept>
 #include <algorithm>
-Molotov::Molotov(MolotovConfig config) {
-	config_ = config;
-	remainingCount_ = config_.carryLimit;
+Molotov::Molotov(MolotovConfig config)
+	: config_(config),
+	  remainingCount_(std::clamp(config.initialCount, 0, std::max(0, config.carryLimit)))
+{
 	if (config_.damageIntervalSeconds <= 0) {
 		throw std::invalid_argument("damageIntervalSeconds must be positive");
 	}
@@ -129,4 +132,14 @@ bool Molotov::ifInstanceInsideBurningArea(Position instancePosition,Position bur
 std::vector<Position> Molotov::findValidThrowCells(Position playerPosition, const Map& map) const
 {
 	return collectValidThrowCells(playerPosition, config_.throwRadiusCells, map);
+}
+
+void Molotov::addMolotov(int amount)
+{
+	remainingCount_ += amount;
+}
+
+int Molotov::getCarryLimit() const
+{
+	return config_.carryLimit;
 }

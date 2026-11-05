@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Map.hpp"
-#include "Position.hpp"
+#include "World/Map.hpp"
+#include "World/Position.hpp"
 #include <vector>
 
 // Target selection uses known terrain; actual landing uses the real map.

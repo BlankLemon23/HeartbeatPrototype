@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Position.hpp"
+#include "World/Position.hpp"
 #include <vector>
 
 class Enemy;
@@ -43,8 +43,8 @@ public:
 
 private:
     GunConfig config_;
-    int ammoInMagazine_ = 0;
-    int reserveAmmo_ = 0;
+    int ammoInMagazine_;
+    int reserveAmmo_;
     double fireCooldownRemainingSeconds_ = 0.0;
     double reloadRemainingSeconds_ = 0.0;
 };

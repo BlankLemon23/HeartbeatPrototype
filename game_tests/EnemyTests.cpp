@@ -1,7 +1,7 @@
-#include "Enemy.hpp"
-#include "Player.hpp"
-#include "ScanController.hpp"
-#include "Sound.hpp"
+#include "Actors/Enemy.hpp"
+#include "Actors/Player.hpp"
+#include "Perception/ScanController.hpp"
+#include "Perception/Sound.hpp"
 #include "Weapons/DecoyMine.hpp"
 #include <string>
 #include <cassert>

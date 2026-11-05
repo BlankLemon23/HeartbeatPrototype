@@ -1,6 +1,6 @@
 #include "ScanController.hpp"
-#include "Enemy.hpp"
-#include "Player.hpp"
+#include "Actors/Enemy.hpp"
+#include "Actors/Player.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>

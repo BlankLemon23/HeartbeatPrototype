@@ -1,11 +1,14 @@
 #include "DecoyMine.hpp"
+#include "DecoyMine.hpp"
+#include "DecoyMine.hpp"
 #include "Throwing.hpp"
-#include "Sound.hpp"
+#include "Perception/Sound.hpp"
+#include <algorithm>
 
 DecoyMine::DecoyMine(DecoyMineConfig config)
+	: config_(config),
+	  remainingCount_(std::clamp(config.initialCount, 0, std::max(0, config.carryLimit)))
 {
-	config_ = config;
-	remainingCount_ = config.carryLimit;
 }
 
 bool DecoyMine::tryThrow(Position playerPosition, Position clickedPosition, const Map& map, std::vector<Enemy>& enemies) {
@@ -28,4 +31,14 @@ std::vector<Position> DecoyMine::findValidThrowCells(Position playerPosition, co
 int DecoyMine::getRemainingCount() const
 {
 	return remainingCount_;
+}
+
+void DecoyMine::addDecoyMine(int amount)
+{
+	remainingCount_ += amount;
+}
+
+int DecoyMine::getCarryLimit() const
+{
+	return config_.carryLimit;
 }
