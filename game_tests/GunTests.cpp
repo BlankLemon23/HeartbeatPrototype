@@ -24,8 +24,7 @@ int main() {
     assert(nearlyEqual(std::hypot(diagonal.row - 1.5, diagonal.column - 1.5),
                        config.rangeCells));
 
-    Map corridor;
-    corridor.setMap({"....................."});
+    Map corridor(MapConfig{{"....................."}});
     EnemyConfig enemyConfig{};
     std::vector<Enemy> enemies;
     enemies.emplace_back(Position{0, 7}, enemyConfig);
@@ -69,22 +68,19 @@ int main() {
     assert(rangeGun.tryFire({0, 0}, {0.5, 1.5}, corridor, atRange));
     assert(atRange[0].getHealth() == 100);
 
-    Map tiny;
-    tiny.setMap({"."});
+    Map tiny(MapConfig{{"."}});
     Gun boundaryGun(config);
     std::vector<Enemy> noEnemies;
     assert(boundaryGun.tryFire({0, 0}, {0.5, 1.5}, tiny, noEnemies));
 
-    Map wall;
-    wall.setMap({".*..."});
+    Map wall(MapConfig{{".*..."}});
     Gun wallGun(config);
     std::vector<Enemy> behindWall;
     behindWall.emplace_back(Position{0, 3}, enemyConfig);
     assert(wallGun.tryFire({0, 0}, {0.5, 1.5}, wall, behindWall));
     assert(behindWall[0].getHealth() == 100);
 
-    Map corner;
-    corner.setMap({".*", ".."});
+    Map corner(MapConfig{{".*", ".."}});
     Gun cornerGun(config);
     std::vector<Enemy> behindCorner;
     behindCorner.emplace_back(Position{1, 1}, enemyConfig);
@@ -92,8 +88,7 @@ int main() {
     assert(behindCorner[0].getHealth() == 100);
 
     // Two mouse points in the same grid cell must retain different directions.
-    Map open;
-    open.setMap({"........", "........", "........", "........", "........"});
+    Map open(MapConfig{{"........", "........", "........", "........", "........"}});
     std::vector<Enemy> aboveAndBelow;
     aboveAndBelow.emplace_back(Position{1, 3}, enemyConfig);
     aboveAndBelow.emplace_back(Position{3, 3}, enemyConfig);

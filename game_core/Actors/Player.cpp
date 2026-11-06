@@ -11,6 +11,11 @@ Player::Player(Position startPosition, PlayerConfig config)
 	if (config.maxHealth <= 0) {
 		throw std::invalid_argument("maxHealth must be positive");
 	}
+	if (config.lowHealthThresholdPercent < 0 ||
+		config.mediumHealthThresholdPercent < config.lowHealthThresholdPercent ||
+		config.mediumHealthThresholdPercent > 100) {
+		throw std::invalid_argument("Health thresholds must be ordered percentages between 0 and 100");
+	}
 	if (!std::isfinite(config.normalMoveIntervalSeconds) || config.normalMoveIntervalSeconds <= 0.0) {
 		throw std::invalid_argument("normalMoveIntervalSeconds must be finite and positive");
 	}
@@ -88,10 +93,12 @@ HpLevel Player::getHpLevel() const {
 	if (health_ == 0) {
 		return HpLevel::Dead;
 	}
-	if (health_ <= config_.maxHealth / 5) {
+	const long long scaledHealth = static_cast<long long>(health_) * 100;
+	const long long maxHealth = config_.maxHealth;
+	if (scaledHealth <= maxHealth * config_.lowHealthThresholdPercent) {
 		return HpLevel::Low;
 	}
-	if (health_ <= 3 * config_.maxHealth / 5) {
+	if (scaledHealth <= maxHealth * config_.mediumHealthThresholdPercent) {
 		return HpLevel::Medium;
 	}
 	return HpLevel::High;

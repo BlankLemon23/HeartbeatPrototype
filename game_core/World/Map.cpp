@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
-void Map::setMap(const std::vector<std::string>& rows) {
-	map_ = rows;
-	scannedCells_.clear();
+Map::Map(MapConfig config) : map_(std::move(config.rows)) {
+	scannedCells_.reserve(map_.size());
 
 	for (const auto& row : map_) {
 		scannedCells_.emplace_back(row.size(), false);

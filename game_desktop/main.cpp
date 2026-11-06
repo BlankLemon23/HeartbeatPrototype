@@ -1,30 +1,37 @@
 // Desktop entry point.
 #include "raylib.h"
 #include "GameRenderer.hpp"
+#include "LevelConfigLoader.hpp"
 #include "Sessions/GameSession.hpp"
+#include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
-
-int main() {
-	GameSession session;
-
+#include <utility>
+enum RunResult
+{
+   Quit,
+   Restart,
+   Initial
+};
+static RunResult runGame(GameSession& session, const RendererConfig& rendererConfig) {
+	RunResult result_ = RunResult::Initial;
 	// Presentation and window setup. Input uses the same cell size as drawing.
-	RendererConfig rendererConfig{};
 	GameRenderer renderer(rendererConfig);
 	const int cellSize = rendererConfig.cellSizePixels;
 	const int width = session.getMap().maxColumnCount() * cellSize;
 	const int height = session.getMap().rowCount() * cellSize;
 
-	std::string title;
-	std::cout << "Enter window title:" << std::endl;
-	std::cin >> title;
+	std::string title = "HeartbeatPototype";
 
 	InitWindow(width, height, title.c_str());
 	SetTargetFPS(60);
+	const ResultButtons resultButtons = renderer.getResultButtons(width, height);
 
 	while (!WindowShouldClose()) {
 		const double elapsedSeconds = GetFrameTime();
 		SessionInput input;
+		//负责传递当前帧的输入 需要跨帧保存的状态 如isPreparingMolotovThrow 由gamesessions保存
 		if (IsKeyDown(KEY_D)) {
 			input.moveDirection = Direction::RIGHT;
 		}
@@ -64,30 +71,83 @@ int main() {
 			input.weaponTarget = aimPosition;
 		}
 
-		if (!session.update(elapsedSeconds, input)) {
-			break;
-		}
+		GameState frameState = session.update(elapsedSeconds, input);
 
 		// Draw back-to-front from the updated session state.
 		BeginDrawing();
-		ClearBackground(RAYWHITE);
-		renderer.drawWorld(session.getMap(), session.getMolotov(), session.getResourceManager());
-
-		if (session.isPreparingThrow()) {
-			renderer.drawThrowPreview(session.getThrowPreviewCells());
+		if (frameState == GameState::Defeat) {
+			renderer.drawDefeatInterface(resultButtons);
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && 
+				CheckCollisionPointRec(mousePosition, resultButtons.quit))
+			{
+				result_ =  RunResult::Quit;
+			}
+			else if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+				CheckCollisionPointRec(mousePosition, resultButtons.restart)){
+				result_ =  RunResult::Restart;
+			}
+	        
 		}
-		else if (isMouseInsideWindow) {
-			const Position playerPosition = session.getPlayer().getPosition();
-			const GridPoint edgePosition = session.getGun().calculateEdgePosition(playerPosition, aimPosition);
-			renderer.drawAimLine(playerPosition, edgePosition);
+		else if (frameState == GameState::Victory) {
+			renderer.drawVictoryInterface(resultButtons);
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+				CheckCollisionPointRec(mousePosition, resultButtons.quit))
+			{
+				result_ =  RunResult::Quit;
+			}
+			else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+				CheckCollisionPointRec(mousePosition, resultButtons.restart)) {
+				result_ =  RunResult::Restart;
+			}
 		}
+		else {
+			ClearBackground(RAYWHITE);
+			renderer.drawWorld(session.getMap(), session.getMolotov(), session.getResourceManager());
 
-		renderer.drawActors(session.getPlayer(), session.getEnemySnapshotPositions());
-		renderer.drawHud(session.getMolotov(), session.getDecoyMine(),
-			session.getGun(), session.getResourceManager());
+			if (session.getPlayer().isStealthEnabled()) {
+				renderer.drawStealthDetectionRange(session.getPlayer().getPosition(),
+					session.getStealthDetectionRadiusCells());
+			}
+
+			if (session.isPreparingThrow()) {
+				renderer.drawThrowPreview(session.getThrowPreviewCells());
+			}
+			else if (isMouseInsideWindow) {
+				const Position playerPosition = session.getPlayer().getPosition();
+				const GridPoint edgePosition = session.getGun().calculateEdgePosition(playerPosition, aimPosition);
+				renderer.drawAimLine(playerPosition, edgePosition);
+			}
+
+			renderer.drawActors(session.getPlayer(), session.getEnemySnapshotPositions());
+			renderer.drawHud(session.getPlayer(), session.getMolotov(), session.getDecoyMine(),
+				session.getGun(), session.getResourceManager(), session.getActionFeedback());
+		}
 		EndDrawing();
+		if (result_ == RunResult::Quit || result_ == RunResult::Restart) {
+			break;
+		}
 	}
 
 	CloseWindow();
-	return 0;
+	return result_;
+}
+
+int main(int argc, char* argv[]) {
+	const std::filesystem::path levelPath = argc > 1
+		? std::filesystem::path(argv[1])
+		: std::filesystem::path(GetApplicationDirectory()) / "level.txt";
+	try {
+		while (true) {
+			LevelConfig config = loadLevelConfig(levelPath);
+			GameSession session(std::move(config.session));
+			if (runGame(session, config.renderer) != RunResult::Restart) {
+				break;
+			}
+		}
+		return 0;
+	}
+	catch (const std::exception& error) {
+		std::cerr << "Could not run level " << levelPath << ": " << error.what() << '\n';
+		return 1;
+	}
 }

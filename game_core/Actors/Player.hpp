@@ -25,6 +25,8 @@ struct PlayerConfig {
     double normalMoveIntervalSeconds = 0.5;
     double stealthMoveIntervalSeconds = 1.0;
     double outBattleIntervalSeconds = 2.0;
+    int lowHealthThresholdPercent = 20;
+    int mediumHealthThresholdPercent = 60;
 };
 
 class Player {

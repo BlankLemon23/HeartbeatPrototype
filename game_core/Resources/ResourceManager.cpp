@@ -1,29 +1,38 @@
 #include "ResourceManager.hpp"
 #include <utility>
 
-void ResourceManager::craftMolotov(Molotov& molotov,Player player)
-{
-	if (remainingMaterials_ >= config_.molotovMaterialCost
-		&&
-		molotov.getRemainingCount() < molotov.getCarryLimit()
-		&&
-		!player.isInBattle()) {
-		molotov.addMolotov(1);
-		remainingMaterials_ -= config_.molotovMaterialCost;
-		
+CraftResult ResourceManager::checkCraft(int materialCost, int count, int carryLimit,
+	const Player& player) const {
+	if (player.isInBattle()) {
+		return CraftResult::InBattle;
 	}
+	if (remainingMaterials_ < materialCost) {
+		return CraftResult::NotEnoughMaterials;
+	}
+	if (count >= carryLimit) {
+		return CraftResult::CarryLimitReached;
+	}
+	return CraftResult::Success;
 }
 
-void ResourceManager::craftDecoyMine(DecoyMine& decoyMine,Player player)
-{
-	if (remainingMaterials_ >= config_.decoyMineMaterialCost
-		&&
-		decoyMine.getRemainingCount() < decoyMine.getCarryLimit()
-		&&
-		!player.isInBattle()) {
+CraftResult ResourceManager::craftMolotov(Molotov& molotov, const Player& player) {
+	const CraftResult result = checkCraft(config_.molotovMaterialCost,
+		molotov.getRemainingCount(), molotov.getCarryLimit(), player);
+	if (result == CraftResult::Success) {
+		molotov.addMolotov(1);
+		remainingMaterials_ -= config_.molotovMaterialCost;
+	}
+	return result;
+}
+
+CraftResult ResourceManager::craftDecoyMine(DecoyMine& decoyMine, const Player& player) {
+	const CraftResult result = checkCraft(config_.decoyMineMaterialCost,
+		decoyMine.getRemainingCount(), decoyMine.getCarryLimit(), player);
+	if (result == CraftResult::Success) {
 		decoyMine.addDecoyMine(1);
 		remainingMaterials_ -= config_.decoyMineMaterialCost;
 	}
+	return result;
 }
 
 void ResourceManager::collectSupplies(Player& player, Gun& gun)

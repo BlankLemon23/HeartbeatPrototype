@@ -1,57 +1,70 @@
 #include "GameSession.hpp"
 #include <algorithm>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
-namespace {
-	constexpr double initialScanCooldownSeconds = 0.0;
-	constexpr double scanRadiusCells = 5.0;
-	constexpr double enemySnapshotDurationSeconds = 0.5;
-	constexpr double manualScanIntervalSeconds = 3.0;
-	constexpr BattleScanConfig battleScanConfig{};
+GameSession::GameSession(GameSessionConfig config)
+	: state_(config.initialState),
+	  config_(std::move(config)),
+	  map_(config_.mapConfig),
+	  player_(config_.playerStart, config_.player),
+	  scanController_(config_.initialScanCooldownSeconds, config_.scanRadiusCells,
+		config_.enemySnapshotDurationSeconds),
+	  molotov_(config_.molotov),
+	  decoyMine_(config_.decoyMine),
+	  gun_(config_.gun),
+	  resourceManager_(config_.ammoPacks, config_.materialPacks, config_.crafting) {
+	const Position playerStart = player_.getPosition();
+
+	if (map_.classifyCell(playerStart.row, playerStart.column) != CellType::Space) {
+		throw std::invalid_argument("Player spawn at row " + std::to_string(playerStart.row) +
+			", column " + std::to_string(playerStart.column) + " must be on a floor cell.");
+	}
+
+	enemies_.reserve(config_.enemySpawns.size());
+	//reserve提前预留存储空间
+	for (const EnemySpawnConfig& spawn : config_.enemySpawns) {
+
+		if (map_.classifyCell(spawn.position.row, spawn.position.column) != CellType::Space) {
+			throw std::invalid_argument("Enemy spawn at row " + std::to_string(spawn.position.row) +
+				", column " + std::to_string(spawn.position.column) + " must be on a floor cell.");
+		}
+
+		if (spawn.config.startingHealth <= 0) {
+			throw std::invalid_argument("Enemy starting health must be positive.");
+		}
+
+		enemies_.emplace_back(spawn.position, spawn.config);
+
+	}
+	//push_back() 接收一个 Enemy 对象。可以先用 Enemy{...} 创建临时敌人，再把它移入列表。
+	// `emplace_back()` 接收的是构造敌人所需的参数，它会直接在列表里用这些参数创建敌人。
 }
 
-GameSession::GameSession()
-	: player_({1, 1}, PlayerConfig{}),
-	  scanController_(initialScanCooldownSeconds, scanRadiusCells, enemySnapshotDurationSeconds),
-	  molotov_(MolotovConfig{}),
-	  decoyMine_(DecoyMineConfig{}),
-	  gun_(GunConfig{}),
-	  resourceManager_(
-		std::vector<AmmoPack>{{6, {1, 5}}, {6, {10, 24}}},
-		std::vector<MaterialPack>{
-			{2, {1, 4}}, {2, {4, 3}}, {2, {8, 3}},
-			{2, {10, 5}}, {2, {13, 12}}, {2, {18, 20}}
-		},
-		ResourceManagerConfig{}) {
-	map_.setMap({
-		"******************************",
-		"*..............*.............*",
-		"*..............*.............*",
-		"*....*****.....*....*****....*",
-		"*....*...*..........*...*....*",
-		"*....*...*.....*....*...*....*",
-		"*....**.**.....*....**.**....*",
-		"*..............*.............*",
-		"*..............*.............*",
-		"***.******************.*******",
-		"*.........*..................*",
-		"*.........*..................*",
-		"*.........*....*******.......*",
-		"*..............*.....*.......*",
-		"*.........*....*.....*.......*",
-		"*.........*....***.***.......*",
-		"*.........*..................*",
-		"*.........*..................*",
-		"*............................*",
-		"******************************"
-	});
-
-	const EnemyConfig enemyConfig{};
-	enemies_.emplace_back(Position{1, 11}, enemyConfig);
-	enemies_.emplace_back(Position{1, 2}, enemyConfig);
+static ActionFeedback feedbackForCraft(CraftResult result) {
+	switch (result) {
+	case CraftResult::InBattle:
+		return ActionFeedback::CraftInBattle;
+	case CraftResult::NotEnoughMaterials:
+		return ActionFeedback::CraftNotEnoughMaterials;
+	case CraftResult::CarryLimitReached:
+		return ActionFeedback::CraftCarryLimitReached;
+	case CraftResult::Success:
+		return ActionFeedback::None;	
+	}
+	return ActionFeedback::None;
 }
 
-bool GameSession::update(double elapsedSeconds, const SessionInput& input) {
+GameState GameSession::update(double elapsedSeconds, const SessionInput& input) {
+	if (state_ == GameState::Defeat) {
+		return state_;
+	}
+	else if (state_ == GameState::Victory) {
+		return state_;
+	}
 	// Advance timers once per frame.
+	actionFeedbackRemainingSeconds_ = std::max(0.0, actionFeedbackRemainingSeconds_ - elapsedSeconds);
 	scanController_.updateScanTime(elapsedSeconds);
 	scanController_.updateSnapshotRemainingSeconds(elapsedSeconds);
 	player_.updateMoveCooldown(elapsedSeconds);
@@ -63,6 +76,7 @@ bool GameSession::update(double elapsedSeconds, const SessionInput& input) {
 	}
 	if (input.moveDirection) {
 		player_.tryMove(*input.moveDirection, map_);
+		//对于optional的数据类型 需要通过解引用来获取
 	}
 	resourceManager_.collectSupplies(player_, gun_);
 
@@ -108,7 +122,8 @@ bool GameSession::update(double elapsedSeconds, const SessionInput& input) {
 
 	// Keep the current death-to-exit behavior until result states are wired in.
 	if (player_.getHealth() <= 0) {
-		return false;
+		state_ = GameState::Defeat;
+		return state_;
 	}
 
 	const auto newEnd = std::remove_if(
@@ -119,6 +134,11 @@ bool GameSession::update(double elapsedSeconds, const SessionInput& input) {
 	//•std::remove_if	是把保留的元素前移，然后由 erase 删除尾部；不能保证“把死亡元素挪到末尾”。
 	//newEnd,指向"保留下来的元素"之后、即"垃圾区"的起点。
 	enemies_.erase(newEnd, enemies_.end());
+
+	if (enemies_.empty()) {
+		state_ = GameState::Victory;
+		return state_;
+	}
 
 	// Refresh battle state before crafting and scanning.
 	const bool allNotChasing = std::all_of(
@@ -141,21 +161,33 @@ bool GameSession::update(double elapsedSeconds, const SessionInput& input) {
 		}
 	}
 
-	// Crafting and scanning.
+	// Keep the last failure when several actions are attempted in one frame.
+	ActionFeedback frameFeedback = ActionFeedback::None;
 	if (input.craftMolotov) {
-		resourceManager_.craftMolotov(molotov_, player_);
+		frameFeedback = feedbackForCraft(resourceManager_.craftMolotov(molotov_, player_));
 	}
 	if (input.craftDecoyMine) {
-		resourceManager_.craftDecoyMine(decoyMine_, player_);
+		const auto feedback = feedbackForCraft(resourceManager_.craftDecoyMine(decoyMine_, player_));
+		if (feedback != ActionFeedback::None) {
+			frameFeedback = feedback;
+		}
 	}
 
-	if (input.scan) {
-		scanController_.tryScanManually(player_, map_, manualScanIntervalSeconds, enemies_);
+	if (input.scan &&
+		!scanController_.tryScanManually(player_, map_, config_.manualScanIntervalSeconds, enemies_)) {
+		frameFeedback = player_.isInBattle() ? ActionFeedback::ScanAutomaticInBattle
+		                                   : ActionFeedback::ScanCoolingDown;
 	}
 
-	scanController_.updateBattleAutoScan(player_, map_, battleScanConfig, enemies_);
+	if (input.craftMolotov || input.craftDecoyMine || input.scan) {
+		constexpr double feedbackDurationSeconds = 2.5;
+		actionFeedback_ = frameFeedback;
+		actionFeedbackRemainingSeconds_ = feedbackDurationSeconds;
+	}
 
-	return true;
+	scanController_.updateBattleAutoScan(player_, map_, config_.battleScan, enemies_);
+
+	return state_;
 }
 
 bool GameSession::isPreparingThrow() const {
@@ -170,6 +202,14 @@ std::vector<Position> GameSession::getThrowPreviewCells() const {
 		return decoyMine_.findValidThrowCells(player_.getPosition(), map_);
 	}
 	return {};
+}
+
+int GameSession::getStealthDetectionRadiusCells() const {
+	int radiusCells = 0;
+	for (const EnemySpawnConfig& spawn : config_.enemySpawns) {
+		radiusCells = std::max(radiusCells, spawn.config.stealthDetectionRadiusCells);
+	}
+	return radiusCells;
 }
 
 const Map& GameSession::getMap() const {
@@ -194,6 +234,10 @@ const Gun& GameSession::getGun() const {
 
 const ResourceManager& GameSession::getResourceManager() const {
 	return resourceManager_;
+}
+
+ActionFeedback GameSession::getActionFeedback() const {
+	return actionFeedbackRemainingSeconds_ > 0.0 ? actionFeedback_ : ActionFeedback::None;
 }
 
 const std::vector<Position>& GameSession::getEnemySnapshotPositions() const {

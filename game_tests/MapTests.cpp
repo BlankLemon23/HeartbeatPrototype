@@ -71,8 +71,7 @@ int main() {
 	battleExitPlayer.updateOutBattleRemainingSeconds(1.5);
 	assert(battleExitPlayer.getOutBattleRemainingSeconds() == 0.0);
 
-	Map map;
-	map.setMap({ "****", "*..*", "****" });
+	Map map(MapConfig{{ "****", "*..*", "****" }});
 	assert(!map.isScanned(1, 1));
 	const bool marked = map.markScanned(1, 1);
 	assert(marked);
@@ -84,14 +83,13 @@ int main() {
 	assert(map.classifyCell(3, 0) == CellType::OutOfBounds);
 	assert(map.classifyCell(0, -1) == CellType::OutOfBounds);
 	assert(map.classifyCell(0, 4) == CellType::OutOfBounds);
-	map.setMap({ "?" });
-	assert(!map.isScanned(0, 0));
-	assert(map.classifyCell(0, 0) == CellType::Unknown);
+	Map unknownMap(MapConfig{{ "?" }});
+	assert(!unknownMap.isScanned(0, 0));
+	assert(unknownMap.classifyCell(0, 0) == CellType::Unknown);
 
 	// Movement requests share one cooldown, including direction changes.
 	{
-		Map movementMap;
-		movementMap.setMap({ "....." });
+		Map movementMap(MapConfig{{ "....." }});
 		PlayerConfig movementConfig{};
 		movementConfig.normalMoveIntervalSeconds = 0.75;
 		Player movingPlayer({0, 1}, movementConfig);
@@ -130,8 +128,7 @@ int main() {
 
 	// Switching modes keeps the current cooldown; the next move uses the new interval.
 	{
-		Map movementMap;
-		movementMap.setMap({ "....." });
+		Map movementMap(MapConfig{{ "....." }});
 		PlayerConfig config{};
 		config.normalMoveIntervalSeconds = 0.5;
 		config.stealthMoveIntervalSeconds = 1.0;
@@ -151,8 +148,7 @@ int main() {
 
 	// Failed moves must not delay a valid move in another direction.
 	{
-		Map obstacleMap;
-		obstacleMap.setMap({ ".*." , "..." });
+		Map obstacleMap(MapConfig{{ ".*." , "..." }});
 		Player blockedPlayer({0, 0}, PlayerConfig{});
 		const bool hitWall = blockedPlayer.tryMove(Direction::RIGHT, obstacleMap);
 		assert(!hitWall);
@@ -165,19 +161,18 @@ int main() {
 		assert((blockedPlayer.getPosition() == Position{1, 0}));
 	}
 
-	map.setMap({ ".*." });
+	Map scanMap(MapConfig{{ ".*." }});
 	ScanController scanController(0.0, 3, 0.5);
 	Player player({0, 0}, PlayerConfig{});
 	assert(scanController.canScanManually(player));
-	const bool firstManualScan = scanController.tryScanManually(player, map, 5.0, noEnemies);
+	const bool firstManualScan = scanController.tryScanManually(player, scanMap, 5.0, noEnemies);
 	assert(firstManualScan);
-	assert(map.isScanned(0, 1) == true);
-	assert(map.isScanned(0, 2) == false);
+	assert(scanMap.isScanned(0, 1) == true);
+	assert(scanMap.isScanned(0, 2) == false);
 
 	// Manual scanning remains blocked until the cooldown expires.
 	assert(!scanController.canScanManually(player));
-	Map blockedMap;
-	blockedMap.setMap({ "." });
+	Map blockedMap(MapConfig{{ "." }});
 	const bool blockedByCooldown = scanController.tryScanManually(player, blockedMap, 2.0, noEnemies);
 	assert(!blockedByCooldown);
 	assert(!blockedMap.isScanned(0, 0));
@@ -185,10 +180,10 @@ int main() {
 	assert(!scanController.canScanManually(player));
 	scanController.updateScanTime(1.0);
 	assert(scanController.canScanManually(player));
-	assert(!map.isScanned(0, 2));
+	assert(!scanMap.isScanned(0, 2));
 
 	// Each call supplies its own interval, rather than always using five seconds.
-	const bool secondManualScan = scanController.tryScanManually(player, map, 2.0, noEnemies);
+	const bool secondManualScan = scanController.tryScanManually(player, scanMap, 2.0, noEnemies);
 	assert(secondManualScan);
 	assert(!scanController.canScanManually(player));
 	scanController.updateScanTime(1.0);
@@ -208,7 +203,7 @@ int main() {
 	assert(scanController.canScanManually(player));
 
 	// Leaving battle preserves the remaining shared cooldown.
-	const bool cooldownBeforeBattleScan = scanController.tryScanManually(player, map, 2.0, noEnemies);
+	const bool cooldownBeforeBattleScan = scanController.tryScanManually(player, scanMap, 2.0, noEnemies);
 	assert(cooldownBeforeBattleScan);
 	player.setInBattle(true);
 	scanController.updateScanTime(1.0);
@@ -218,13 +213,12 @@ int main() {
 	assert(scanController.canScanManually(player));
 
 	// A wall touching the ray at a corner blocks it in both directions.
-	map.setMap({ ".*", ".." });
-	assert(!map.hasLineOfSight({0, 0}, {1, 1}));
-	assert(!map.hasLineOfSight({1, 1}, {0, 0}));
+	Map cornerMap(MapConfig{{ ".*", ".." }});
+	assert(!cornerMap.hasLineOfSight({0, 0}, {1, 1}));
+	assert(!cornerMap.hasLineOfSight({1, 1}, {0, 0}));
 
 	// Preview ignores an unknown wall; real throws still land before it.
-	Map previewMap;
-	previewMap.setMap({".*..."});
+	Map previewMap(MapConfig{{".*..."}});
 	MolotovConfig previewConfig{};
 	previewConfig.throwRadiusCells = 3;
 	previewConfig.burnRadiusCells = 1;
@@ -252,8 +246,7 @@ int main() {
 	assert(!previewMolotov.tryThrow({0, 0}, {0, 0}, previewMap));
 
 	// Known terrain uses the same corner rule, including a wall beside the ray.
-	Map previewCornerMap;
-	previewCornerMap.setMap({".*", ".."});
+	Map previewCornerMap(MapConfig{{".*", ".."}});
 	assert(previewCornerMap.hasLineOfSight({0, 0}, {1, 1}, SightMode::KnownTerrain));
 	previewCornerMap.markScanned(0, 1);
 	assert(!previewCornerMap.hasLineOfSight({0, 0}, {1, 1}, SightMode::KnownTerrain));
@@ -261,8 +254,7 @@ int main() {
 	assert((previewCornerMap.findLastFreeCell({0, 0}, {1, 1}) == Position{0, 0}));
 
 	// Landing stops before a wall, including a visible wall used as the target.
-	Map landingMap;
-	landingMap.setMap({"..*.."});
+	Map landingMap(MapConfig{{"..*.."}});
 	assert((landingMap.findLastFreeCell({0, 0}, {0, 4}) == Position{0, 1}));
 	assert((landingMap.findLastFreeCell({0, 4}, {0, 0}) == Position{0, 3}));
 	assert((landingMap.findLastFreeCell({0, 0}, {0, 2}) == Position{0, 1}));
@@ -270,8 +262,7 @@ int main() {
 	assert((landingMap.findLastFreeCell({0, 3}, {0, 8}) == Position{0, 4}));
 
 	// Entering battle scans immediately, even with a manual cooldown remaining.
-	Map battleMap;
-	battleMap.setMap({ "........." });
+	Map battleMap(MapConfig{{ "........." }});
 	Player battlePlayer({0, 0}, PlayerConfig{});
 	ScanController battleScanner(0.0, 1.0, 0.5);
 	const BattleScanConfig equalIntervals{2.0, 2.0, 2.0};
@@ -304,8 +295,7 @@ int main() {
 	assert(battleMap.isScanned(0, 2));
 
 	// A lower health band scans immediately and starts its own interval.
-	Map healthScanMap;
-	healthScanMap.setMap({std::string(16, '.')});
+	Map healthScanMap(MapConfig{{std::string(16, '.')}});
 	Player scanningPlayer({0, 0}, PlayerConfig{});
 	ScanController healthScanner(0.0, 0.0, 0.5);
 	const BattleScanConfig healthIntervals{3.0, 2.0, 1.2};
@@ -352,13 +342,13 @@ int main() {
 	scanningPlayer.setInBattle(false);
 	assert(!healthScanner.tryScanManually(scanningPlayer, healthScanMap, 5.0, noEnemies));
 
-	map.setMap(std::vector<std::string>(11, std::string(11, '.')));
+	Map radiusMap(MapConfig{std::vector<std::string>(11, std::string(11, '.'))});
 	ScanController radiusScanner(0.0, 5.0, 0.5);
 	const Player radiusPlayer({5, 5}, PlayerConfig{});
-	const bool radiusManualScan = radiusScanner.tryScanManually(radiusPlayer, map, 5.0, noEnemies);
+	const bool radiusManualScan = radiusScanner.tryScanManually(radiusPlayer, radiusMap, 5.0, noEnemies);
 	assert(radiusManualScan);
-	assert(map.isScanned(8, 9)); // Distance five: include the circular boundary.
-	assert(!map.isScanned(9, 9)); // Outside the circle.
+	assert(radiusMap.isScanned(8, 9)); // Distance five: include the circular boundary.
+	assert(!radiusMap.isScanned(9, 9)); // Outside the circle.
 
 	return 0;
 }

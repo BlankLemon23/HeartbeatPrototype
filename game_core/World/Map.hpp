@@ -18,9 +18,13 @@ enum class SightMode {
     KnownTerrain
 };
 
+struct MapConfig {
+    std::vector<std::string> rows;
+};
+
 class Map {
 public:
-    void setMap(const std::vector<std::string>& rows);
+    explicit Map(MapConfig config);
     const std::vector<std::string>& getMap() const;
     int rowCount() const;
     int maxColumnCount() const;

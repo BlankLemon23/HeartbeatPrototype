@@ -38,8 +38,7 @@ int main() {
     assert(injuredEnemy.getHealth() == 100);
 
     // The first contact hits immediately; the same enemy then waits two seconds.
-    Map contactMap;
-    contactMap.setMap({"...", "...", "..."});
+    Map contactMap(MapConfig{{"...", "...", "..."}});
     injuredEnemy.updateEnemy(injuredPlayer, 0.0, contactMap, false);
     assert(injuredPlayer.getHealth() == 92);
     injuredEnemy.updateEnemy(injuredPlayer, 1.0, contactMap, false);
@@ -52,8 +51,7 @@ int main() {
     assert(injuredPlayer.getHealth() == 0);
 
     // A wall hides the player, leaving one legal neighbor for wandering.
-    Map corridor;
-    corridor.setMap({".", ".", "*", "."});
+    Map corridor(MapConfig{{".", ".", "*", "."}});
     const Position hiddenPlayer{3, 0};
     Enemy enemy({0, 0}, config);
     updateEnemyAt(enemy, 0.0, corridor, hiddenPlayer, false);
@@ -65,8 +63,7 @@ int main() {
     assert((enemy.getPosition() == Position{0, 0}));
 
     // Stealth reduces detection before the chase starts.
-    Map detectionMap;
-    detectionMap.setMap({"....."});
+    Map detectionMap(MapConfig{{"....."}});
     EnemyConfig detectionConfig = config;
     detectionConfig.wanderingRadiusCells = 0;
     Enemy watcher({0, 0}, detectionConfig);
@@ -80,15 +77,13 @@ int main() {
     assert(watcher.isChasing());
 
     // No legal neighbor: a blocked enemy cannot move into a wall.
-    Map blocked;
-    blocked.setMap({".*", "**", ".."});
+    Map blocked(MapConfig{{".*", "**", ".."}});
     Enemy trapped({0, 0}, config);
     updateEnemyAt(trapped, 1.0, blocked, {2, 0}, false);
     assert((trapped.getPosition() == Position{0, 0}));
 
     // Random choices must remain adjacent, on open cells and inside the radius.
-    Map openMap;
-    openMap.setMap({".....", ".....", ".....", ".....", "....."});
+    Map openMap(MapConfig{{".....", ".....", ".....", ".....", "....."}});
     EnemyConfig wanderConfig = config;
     wanderConfig.normalDetectionRadiusCells = 1;
     Enemy walker({2, 2}, wanderConfig);
@@ -109,8 +104,7 @@ int main() {
     assert((stationary.getPosition() == Position{2, 2}));
 
     // After detection, chase around a wall and move only the first path step.
-    Map detour;
-    detour.setMap({".*.", "..."});
+    Map detour(MapConfig{{".*.", "..."}});
     Enemy pursuer({0, 0}, config);
     updateEnemyAt(pursuer, 0.0, detour, {1, 0}, false);
     assert(pursuer.isChasing());
@@ -139,8 +133,7 @@ int main() {
     assert(!(tracker.getPosition() == lossPosition));
 
     // A scan captures enemy positions at that moment; walls and radius limit the snapshot.
-    Map snapshotMap;
-    snapshotMap.setMap({".*...", "....."});
+    Map snapshotMap(MapConfig{{".*...", "....."}});
     const Player observer({0, 0}, PlayerConfig{});
     std::vector<Enemy> snapshotCandidates;
     snapshotCandidates.emplace_back(Position{1, 0}, config); // Visible.
@@ -162,8 +155,7 @@ int main() {
     assert(snapshotScanner.getEnemySnapshotPositions().empty());
 
     // Sound crosses a wall: only listeners in range investigate the fixed source.
-    Map soundMap;
-    soundMap.setMap({".....", ".***.", "....."});
+    Map soundMap(MapConfig{{".....", ".***.", "....."}});
     Player soundOwner({2, 2}, PlayerConfig{});
     EnemyConfig soundConfig = config;
     soundConfig.wanderingRadiusCells = 0;
@@ -179,8 +171,7 @@ int main() {
     assert(!listeners[0].isChasing());
 
     // The source's radius applies even beyond the old fixed eight-cell limit.
-    Map soundRangeMap;
-    soundRangeMap.setMap({std::string(13, '.')});
+    Map soundRangeMap(MapConfig{{std::string(13, '.')}});
     EnemyConfig soundRangeConfig = config;
     soundRangeConfig.normalDetectionRadiusCells = 0;
     soundRangeConfig.stealthDetectionRadiusCells = 0;
@@ -204,8 +195,7 @@ int main() {
     assert((rangeListeners.front().getPosition() == Position{0, 9}));
 
     // An unreachable sound source ends investigation and resumes local wandering.
-    Map separatedMap;
-    separatedMap.setMap({"...", "***", "..."});
+    Map separatedMap(MapConfig{{"...", "***", "..."}});
     EnemyConfig separatedConfig = config;
     separatedConfig.wanderingRadiusCells = 1;
     Enemy separatedListener({0, 1}, separatedConfig);

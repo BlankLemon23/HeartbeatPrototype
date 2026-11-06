@@ -1,0 +1,127 @@
+# Map: * = wall, . = floor.
+[map]
+******************************
+*..............*.............*
+*..............*.............*
+*....*****.....*....*****....*
+*....*...*..........*...*....*
+*....*...*.....*....*...*....*
+*....**.**.....*....**.**....*
+*..............*.............*
+*..............*.............*
+***.******************.*******
+*.........*..................*
+*.........*..................*
+*.........*....*******.......*
+*..............*.....*.......*
+*.........*....*.....*.......*
+*.........*....***.***.......*
+*.........*..................*
+*.........*..................*
+*............................*
+******************************
+
+# Enemy rows: row column [startingHealth]. Coordinates start at zero.
+[enemies]
+1 11
+1 2
+
+# Optional settings. Uncomment a key to override its C++ default.
+# Key names are case-sensitive. Times use seconds and distances use cells.
+
+[session]
+# initialState = playing
+# Use victory or defeat to preview a result screen.
+
+[player]
+# startRow = 1
+# startColumn = 1
+# maxHealth = 100
+# normalMoveIntervalSeconds = 0.5
+# stealthMoveIntervalSeconds = 1.0
+# outBattleIntervalSeconds = 2.0
+# lowHealthThresholdPercent = 20
+# mediumHealthThresholdPercent = 60
+
+[enemy_defaults]
+# startingHealth = 100
+# moveIntervalSeconds = 2.0
+# wanderIntervalSeconds = 0.5
+# attackIntervalSeconds = 2.0
+# wanderingRadiusCells = 3
+# waitAfterLossSeconds = 2.0
+# normalDetectionRadiusCells = 8
+# stealthDetectionRadiusCells = 3
+# stopChaseRadiusCells = 15
+# attackDamage = 8
+
+# Override any enemy-default key for one spawn using its zero-based index.
+# The optional health in [enemies] overrides [enemy_defaults].
+# An [enemy.N] override is applied last.
+# [enemy.0]
+# startingHealth = 100
+
+[scan]
+# initialScanCooldownSeconds = 0.0
+# scanRadiusCells = 5.0
+# enemySnapshotDurationSeconds = 0.5
+# manualScanIntervalSeconds = 3.0
+
+[battle_scan]
+# highHealthIntervalSeconds = 3.0
+# mediumHealthIntervalSeconds = 2.0
+# lowHealthIntervalSeconds = 1.2
+
+[gun]
+# damagePerShot = 25
+# rangeCells = 10
+# fireIntervalSeconds = 0.5
+# soundRadiusCells = 12
+# magazineCapacity = 6
+# maxTotalAmmo = 24
+# initialMagazineAmmo = 6
+# initialReserveAmmo = 12
+# reloadDurationSeconds = 2.0
+
+[molotov]
+# throwRadiusCells = 8
+# burnRadiusCells = 4
+# burnDurationSeconds = 4.0
+# damageIntervalSeconds = 1.0
+# burnDamageEnemy = 30
+# burnDamagePlayer = 10
+# carryLimit = 5
+# initialCount = 2
+
+[decoy_mine]
+# throwRadiusCells = 12
+# soundRadiusCells = 8
+# carryLimit = 5
+# initialCount = 1
+
+[crafting]
+# molotovMaterialCost = 3
+# decoyMineMaterialCost = 2
+
+# Each supply row is row column amount. Uncomment a header and its rows
+# to replace that default list. An empty active section removes all its packs.
+# [ammo_packs]
+# 1 5 6
+# 10 24 6
+# [material_packs]
+# 1 4 2
+# 4 3 2
+# 8 3 2
+# 10 5 2
+# 13 12 2
+# 18 20 2
+
+[renderer]
+# Colors are red green blue alpha, each in the range 0 to 255.
+# cellSizePixels = 40
+# fireRadiusInCells = 0.5
+# fireColor = 255 161 0 140
+# throwPreviewColor = 102 191 255 178
+# throwPreviewLineThicknessPixels = 2.0
+# aimLineColor = 230 41 55 191
+# aimLineThicknessPixels = 2.0

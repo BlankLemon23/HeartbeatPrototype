@@ -34,8 +34,19 @@ add_executable(game_desktop
     game_desktop/main.cpp
     game_desktop/GameRenderer.cpp
     game_desktop/GameRenderer.hpp
+    game_desktop/LevelConfigLoader.cpp
+    game_desktop/LevelConfigLoader.hpp
 )
 target_link_libraries(game_desktop PRIVATE game_core raylib)
+
+add_custom_target(game_level_config
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:game_desktop>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/game_desktop/level.txt"
+        "$<TARGET_FILE_DIR:game_desktop>/level.txt"
+    VERBATIM
+)
+add_dependencies(game_desktop game_level_config)
 
 add_executable(game_tests game_tests/MapTests.cpp)
 target_link_libraries(game_tests PRIVATE game_core)

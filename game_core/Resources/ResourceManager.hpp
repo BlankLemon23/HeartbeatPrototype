@@ -27,10 +27,17 @@ struct AmmoPack{
 
 
 
+enum class CraftResult {
+	Success,
+	InBattle,
+	NotEnoughMaterials,
+	CarryLimitReached
+};
+
 class ResourceManager {
 public:
-	void craftMolotov(Molotov& molotov,Player player);
-	void craftDecoyMine(DecoyMine& decoyMine,Player player);
+	CraftResult craftMolotov(Molotov& molotov, const Player& player);
+	CraftResult craftDecoyMine(DecoyMine& decoyMine, const Player& player);
 	void collectSupplies(Player& player, Gun& gun);
 	ResourceManager(std::vector<AmmoPack> ammoPacks, std::vector<MaterialPack> materialPacks, ResourceManagerConfig config);
 
@@ -39,6 +46,7 @@ public:
 	int getRemainingMaterials() const;
 
 private:
+	CraftResult checkCraft(int materialCost, int count, int carryLimit, const Player& player) const;
 	void addMaterials(MaterialPack materialPack);
 	ResourceManagerConfig config_;
 	int remainingMaterials_ = 0;
