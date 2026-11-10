@@ -1,9 +1,7 @@
 #include "Player.hpp"
-#include "Player.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-
 
 Player::Player(Position startPosition, PlayerConfig config)
 	: config_(config), position_(startPosition), health_(config.maxHealth),
@@ -52,7 +50,7 @@ bool Player::tryMove(Direction direction, const Map& map) {
 	if (map.classifyCell(newPosition.row, newPosition.column) == CellType::Space) {
 		moveCooldownRemainingSeconds_ = stealthEnabled_
 			? config_.stealthMoveIntervalSeconds
-			: config_.normalMoveIntervalSeconds; //撞墙不触发冷却，只有成功移动才触发冷却
+			: config_.normalMoveIntervalSeconds;
 		position_ = newPosition;
 		return true;
 	}
@@ -86,7 +84,7 @@ int Player::getMaxHealth() const {
 }
 
 void Player::setHealth(int health) {
-	health_ = std::clamp(health, 0, config_.maxHealth); //把 health 的值约束在 [0, config_.maxHealth] 之间，结果赋给 health_。
+	health_ = std::clamp(health, 0, config_.maxHealth);
 }
 
 HpLevel Player::getHpLevel() const {
@@ -140,11 +138,9 @@ void Player::resetOutBattleRemainingSeconds() {
 	outBattleRemainingSeconds_ = config_.outBattleIntervalSeconds;
 }
 
-void Player::takeDamage(int damage)
-{
+void Player::takeDamage(int damage) {
 	if (damage <= 0) {
 		return;
 	}
 	health_ = std::max(0, health_ - damage);
 }
-

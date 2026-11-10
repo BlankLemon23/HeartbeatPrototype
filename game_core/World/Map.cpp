@@ -10,8 +10,6 @@ Map::Map(MapConfig config) : map_(std::move(config.rows)) {
 
 	for (const auto& row : map_) {
 		scannedCells_.emplace_back(row.size(), false);
-		//为地图的每一行，往 scannedCells_ 里追加一个长度为 row.size()（该行格子数）的内层 vector<bool>，
-		// 所有元素初始化为 false（表示都还没扫描）。
 	}
 }
 
@@ -27,8 +25,7 @@ int Map::maxColumnCount() const {
 	int maxColumns = 0;
 	for (const auto& row : map_) {
 		maxColumns = std::max(maxColumns, static_cast<int>(row.size()));
-	}//row.size() 返回的是 std::string::size_type,实际就是 std::size_t(无符号 64 位整数),
-	//而 maxColumns 是 int(有符号 32 位)。 所以需要显性数据类型转换
+	}
 	return maxColumns;
 }
 
@@ -69,13 +66,12 @@ bool Map::hasLineOfSight(Position start, Position target, SightMode mode) const 
 		return false;
 	}
 	return traceLine(start, {target.row + 0.5, target.column + 0.5}, mode, {}).targetVisible;
-    //{} 会被编译器解释成「一个刚构造出来的、空的 std::vector<Enemy>」——等价于 std::vector<Enemy>{}
-    // ，也就是 size 为 0、没有元素的 vector。它的含义是：「这次调用不关心敌人」。
 }
 
 Position Map::findLastFreeCell(Position start, Position target) const {
 	return traceLine(start, {target.row + 0.5, target.column + 0.5},
-                     SightMode::RealTerrain, {}).lastFreeCell;
+		SightMode::RealTerrain, {})
+		.lastFreeCell;
 }
 
 bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
@@ -89,111 +85,99 @@ bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
 	if (mode == SightMode::RealTerrain) {
 		return true;
 	}
-	return isScanned(cell.row, cell.column);   // 只剩 KnownTerrain + Wall
+	return isScanned(cell.row, cell.column);
 }
 
 Map::LineTraceResult Map::traceLine(Position start, GridPoint target, SightMode mode,
-                                    const std::vector<Enemy>& enemies) const
-{
-    if (classifyCell(start.row, start.column) == CellType::OutOfBounds) {
-        return {start, false};
-    }
+	const std::vector<Enemy>& enemies) const {
+	if (classifyCell(start.row, start.column) == CellType::OutOfBounds) {
+		return {start, false};
+	}
 
-    const double startCenterRow = start.row + 0.5;
-    const double startCenterColumn = start.column + 0.5;
-    const double rowDistance = std::abs(target.row - startCenterRow);
-    const double columnDistance = std::abs(target.column - startCenterColumn);
-    const Position targetCell{
-        static_cast<int>(std::floor(target.row)),
-        static_cast<int>(std::floor(target.column))
-    };
-    const double neverCross = std::numeric_limits<double>::infinity();
-    // 这里比较的是射线到达下一条行边界和列边界的进度。
-    // 数学上两个进度相等时，射线恰好穿过格角；但 double 的计算结果可能有极小误差。
-    // 因此允许两者相差一点点，仍按穿过格角处理。
-    const double cornerTolerance = 1e-12;
+	const double startCenterRow = start.row + 0.5;
+	const double startCenterColumn = start.column + 0.5;
+	const double rowDistance = std::abs(target.row - startCenterRow);
+	const double columnDistance = std::abs(target.column - startCenterColumn);
+	const Position targetCell{
+		static_cast<int>(std::floor(target.row)),
+		static_cast<int>(std::floor(target.column))};
+	const double neverCross = std::numeric_limits<double>::infinity();
+	const double cornerTolerance = 1e-12;
 
-    int rowStep = 0;
-    if (target.row > startCenterRow) {
-        rowStep = 1;
-    }
-    else if (target.row < startCenterRow) {
-        rowStep = -1;
-    }
-    int columnStep = 0;
-    if (target.column > startCenterColumn) {
-        columnStep = 1;
-    }
-    else if (target.column < startCenterColumn) {
-        columnStep = -1;
-    }
+	int rowStep = 0;
+	if (target.row > startCenterRow) {
+		rowStep = 1;
+	}
+	else if (target.row < startCenterRow) {
+		rowStep = -1;
+	}
+	int columnStep = 0;
+	if (target.column > startCenterColumn) {
+		columnStep = 1;
+	}
+	else if (target.column < startCenterColumn) {
+		columnStep = -1;
+	}
 
-    double nextRowProgress = neverCross;
-    double rowProgressStep = neverCross;
-    if (rowDistance > 0.0) {
-        nextRowProgress = 0.5 / rowDistance;
-        rowProgressStep = 1.0 / rowDistance;
-    }
-    double nextColumnProgress = neverCross;
-    double columnProgressStep = neverCross;
-    if (columnDistance > 0.0) {
-        nextColumnProgress = 0.5 / columnDistance;
-        columnProgressStep = 1.0 / columnDistance;
-    }
+	double nextRowProgress = neverCross;
+	double rowProgressStep = neverCross;
+	if (rowDistance > 0.0) {
+		nextRowProgress = 0.5 / rowDistance;
+		rowProgressStep = 1.0 / rowDistance;
+	}
+	double nextColumnProgress = neverCross;
+	double columnProgressStep = neverCross;
+	if (columnDistance > 0.0) {
+		nextColumnProgress = 0.5 / columnDistance;
+		columnProgressStep = 1.0 / columnDistance;
+	}
 
-    Position current = start;
-    while (true) {
-        // Inspect every enemy at this cell before advancing the ray once.
-        for (const Enemy& enemy : enemies) {
-            if (enemy.getPosition() == current) {
-                return {current, current == targetCell, current};
-            }
-        }
+	Position current = start;
+	while (true) {
+		// Inspect every enemy at this cell before advancing the ray once.
+		for (const Enemy& enemy : enemies) {
+			if (enemy.getPosition() == current) {
+				return {current, current == targetCell, current};
+			}
+		}
 
-        // Progress 1 is the exact endpoint, even when it is outside the map.
-        const double nextBoundaryProgress = std::min(nextRowProgress, nextColumnProgress);
-        if (nextBoundaryProgress > 1.0 + cornerTolerance) {
-            return {current, true};
-        }
+		// Progress 1 is the exact endpoint, even when it is outside the map.
+		const double nextBoundaryProgress = std::min(nextRowProgress, nextColumnProgress);
+		if (nextBoundaryProgress > 1.0 + cornerTolerance) {
+			return {current, true};
+		}
 
-        Position next = current;
-        if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
-            // A wall touching the ray at a grid corner blocks cells behind it.
-            if (blocksLineOfSight({current.row + rowStep, current.column}, mode) ||
-                blocksLineOfSight({current.row, current.column + columnStep}, mode)) {
-                return {current, false};
-            }
-            next.row += rowStep;
-            next.column += columnStep;
-            nextRowProgress += rowProgressStep;
-            nextColumnProgress += columnProgressStep;
-        }
-        else if (nextColumnProgress < nextRowProgress) {
-            next.column += columnStep;
-            nextColumnProgress += columnProgressStep;
-        }
-        else {
-            next.row += rowStep;
-            nextRowProgress += rowProgressStep;
-        }
+		Position next = current;
+		if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
+			// A wall touching the ray at a grid corner blocks cells behind it.
+			if (blocksLineOfSight({current.row + rowStep, current.column}, mode) ||
+				blocksLineOfSight({current.row, current.column + columnStep}, mode)) {
+				return {current, false};
+			}
+			next.row += rowStep;
+			next.column += columnStep;
+			nextRowProgress += rowProgressStep;
+			nextColumnProgress += columnProgressStep;
+		}
+		else if (nextColumnProgress < nextRowProgress) {
+			next.column += columnStep;
+			nextColumnProgress += columnProgressStep;
+		}
+		else {
+			next.row += rowStep;
+			nextRowProgress += rowProgressStep;
+		}
 
-        const CellType nextCell = classifyCell(next.row, next.column);
-        if (blocksLineOfSight(next, mode)) {
-            // A target wall is visible, while the landing cell stays before it.
-            return {current, next == targetCell && nextCell != CellType::OutOfBounds};
-        }
-        current = next;
-    }
+		const CellType nextCell = classifyCell(next.row, next.column);
+		if (blocksLineOfSight(next, mode)) {
+			// A target wall is visible, while the landing cell stays before it.
+			return {current, next == targetCell && nextCell != CellType::OutOfBounds};
+		}
+		current = next;
+	}
 }
-//current ──复制──▶ next ──推进一格──▶ next ──验证通过──▶ current
-//↑                                                        │
-//└────────────────── 下一轮继续 ─────────────────────────┘
-//Position next = current; // 从当前格出发，准备候选格
 
-// 推进 next，检查它是否被阻挡
-
-//current = next;          // 检查通过，正式进入下一格
 Position Map::findFirstEnemyPositionFromPlayerToTarget(
-    Position playerStart, GridPoint target, const std::vector<Enemy>& enemies) const {
-    return traceLine(playerStart, target, SightMode::RealTerrain, enemies).firstEnemyPosition;
+	Position playerStart, GridPoint target, const std::vector<Enemy>& enemies) const {
+	return traceLine(playerStart, target, SightMode::RealTerrain, enemies).firstEnemyPosition;
 }

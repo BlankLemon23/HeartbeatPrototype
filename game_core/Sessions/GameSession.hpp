@@ -12,7 +12,7 @@
 #include <optional>
 #include <vector>
 
-enum GameState {
+enum class GameState {
 	Playing,
 	Victory,
 	Defeat
@@ -27,11 +27,9 @@ enum class ActionFeedback {
 	CraftCarryLimitReached
 };
 
-// One frame of game actions, expressed without desktop key or pixel coordinates.
 struct SessionInput {
 	std::optional<Direction> moveDirection;
-	//std::optional<T> 表示这里可能有一个 T 类型的值，也可能没有值
-	std::optional<GridPoint> weaponTarget; // Set on a weapon click inside the play area.
+	std::optional<GridPoint> weaponTarget;
 	bool toggleStealth = false;
 	bool reload = false;
 	bool toggleMolotov = false;
@@ -42,36 +40,32 @@ struct SessionInput {
 };
 
 struct EnemySpawnConfig {
-	Position position{};
-	EnemyConfig config{};
+	Position position;
+	EnemyConfig config;
 };
 
 struct GameSessionConfig {
-	GameState initialState = GameState::Playing;
+	GameState initialState;
 	MapConfig mapConfig;
 	std::vector<EnemySpawnConfig> enemySpawns;
-	double initialScanCooldownSeconds = 0.0;
-	double scanRadiusCells = 5.0;
-	double enemySnapshotDurationSeconds = 0.5;
-	double manualScanIntervalSeconds = 3.0;
-	BattleScanConfig battleScan{};
-	Position playerStart{1, 1};
-	PlayerConfig player{};
-	GunConfig gun{};
-	MolotovConfig molotov{};
-	DecoyMineConfig decoyMine{};
-	ResourceManagerConfig crafting{};
-	std::vector<AmmoPack> ammoPacks{{6, {1, 5}}, {6, {10, 24}}};
-	std::vector<MaterialPack> materialPacks{
-		{2, {1, 4}}, {2, {4, 3}}, {2, {8, 3}},
-		{2, {10, 5}}, {2, {13, 12}}, {2, {18, 20}}
-	};
+	double initialScanCooldownSeconds;
+	double scanRadiusCells;
+	double enemySnapshotDurationSeconds;
+	double manualScanIntervalSeconds;
+	BattleScanConfig battleScan;
+	Position playerStart;
+	PlayerConfig player;
+	GunConfig gun;
+	MolotovConfig molotov;
+	DecoyMineConfig decoyMine;
+	ResourceManagerConfig crafting;
+	std::vector<AmmoPack> ammoPacks;
+	std::vector<MaterialPack> materialPacks;
 };
 
 class GameSession {
 public:
 	explicit GameSession(GameSessionConfig config);
-	// Returns false if the player died and the current loop should exit.
 	GameState update(double elapsedSeconds, const SessionInput& input);
 
 	bool isPreparingThrow() const;

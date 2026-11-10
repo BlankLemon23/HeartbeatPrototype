@@ -12,13 +12,13 @@ class ResourceManager;
 enum class ActionFeedback;
 
 struct RendererConfig {
-	int cellSizePixels = 40;
-	float fireRadiusInCells = 0.5f;
-	Color fireColor = Fade(ORANGE, 0.55f);
-	Color throwPreviewColor = Fade(SKYBLUE, 0.7f);
-	float throwPreviewLineThicknessPixels = 2.0f;
-	Color aimLineColor = Fade(RED, 0.75f);
-	float aimLineThicknessPixels = 2.0f;
+	int cellSizePixels;
+	float fireRadiusInCells;
+	Color fireColor;
+	Color throwPreviewColor;
+	float throwPreviewLineThicknessPixels;
+	Color aimLineColor;
+	float aimLineThicknessPixels;
 };
 
 struct ResultButtons {

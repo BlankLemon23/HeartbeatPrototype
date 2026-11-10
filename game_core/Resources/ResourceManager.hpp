@@ -7,25 +7,19 @@
 #include "Weapons/Molotov.hpp"
 
 struct ResourceManagerConfig {
-	int molotovMaterialCost = 3;
-	int decoyMineMaterialCost = 2;
+	int molotovMaterialCost;
+	int decoyMineMaterialCost;
 };
 
-
-struct MaterialPack
-{
-	int amount = 2;
+struct MaterialPack {
+	int amount;
 	Position position;
 };
 
-
-struct AmmoPack{
-	int amount = 6;
+struct AmmoPack {
+	int amount;
 	Position position;
 };
-
-
-
 
 enum class CraftResult {
 	Success,

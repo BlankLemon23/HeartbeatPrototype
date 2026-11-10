@@ -10,7 +10,7 @@ GameSession::GameSession(GameSessionConfig config)
 	  map_(config_.mapConfig),
 	  player_(config_.playerStart, config_.player),
 	  scanController_(config_.initialScanCooldownSeconds, config_.scanRadiusCells,
-		config_.enemySnapshotDurationSeconds),
+		  config_.enemySnapshotDurationSeconds),
 	  molotov_(config_.molotov),
 	  decoyMine_(config_.decoyMine),
 	  gun_(config_.gun),
@@ -23,9 +23,7 @@ GameSession::GameSession(GameSessionConfig config)
 	}
 
 	enemies_.reserve(config_.enemySpawns.size());
-	//reserve提前预留存储空间
 	for (const EnemySpawnConfig& spawn : config_.enemySpawns) {
-
 		if (map_.classifyCell(spawn.position.row, spawn.position.column) != CellType::Space) {
 			throw std::invalid_argument("Enemy spawn at row " + std::to_string(spawn.position.row) +
 				", column " + std::to_string(spawn.position.column) + " must be on a floor cell.");
@@ -36,10 +34,7 @@ GameSession::GameSession(GameSessionConfig config)
 		}
 
 		enemies_.emplace_back(spawn.position, spawn.config);
-
 	}
-	//push_back() 接收一个 Enemy 对象。可以先用 Enemy{...} 创建临时敌人，再把它移入列表。
-	// `emplace_back()` 接收的是构造敌人所需的参数，它会直接在列表里用这些参数创建敌人。
 }
 
 static ActionFeedback feedbackForCraft(CraftResult result) {
@@ -51,11 +46,13 @@ static ActionFeedback feedbackForCraft(CraftResult result) {
 	case CraftResult::CarryLimitReached:
 		return ActionFeedback::CraftCarryLimitReached;
 	case CraftResult::Success:
-		return ActionFeedback::None;	
+		return ActionFeedback::None;
 	}
 	return ActionFeedback::None;
 }
 
+// Advances a playing session by one frame and returns its current state.
+// Once the session ends, subsequent calls return the stored result.
 GameState GameSession::update(double elapsedSeconds, const SessionInput& input) {
 	if (state_ == GameState::Defeat) {
 		return state_;
@@ -76,7 +73,6 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 	}
 	if (input.moveDirection) {
 		player_.tryMove(*input.moveDirection, map_);
-		//对于optional的数据类型 需要通过解引用来获取
 	}
 	resourceManager_.collectSupplies(player_, gun_);
 
@@ -98,8 +94,7 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 		const Position playerPosition = player_.getPosition();
 		if (isPreparingThrow()) {
 			const Position clickedPosition{
-				static_cast<int>(target.row), static_cast<int>(target.column)
-			};
+				static_cast<int>(target.row), static_cast<int>(target.column)};
 			const bool throwSucceeded = isPreparingMolotovThrow_
 				? molotov_.tryThrow(playerPosition, clickedPosition, map_)
 				: decoyMine_.tryThrow(playerPosition, clickedPosition, map_, enemies_);
@@ -120,7 +115,6 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 		enemy.updateEnemy(player_, elapsedSeconds, map_, player_.isStealthEnabled());
 	}
 
-	// Keep the current death-to-exit behavior until result states are wired in.
 	if (player_.getHealth() <= 0) {
 		state_ = GameState::Defeat;
 		return state_;
@@ -131,8 +125,6 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 		[](const Enemy& enemy) {
 			return enemy.getHealth() <= 0;
 		});
-	//•std::remove_if	是把保留的元素前移，然后由 erase 删除尾部；不能保证“把死亡元素挪到末尾”。
-	//newEnd,指向"保留下来的元素"之后、即"垃圾区"的起点。
 	enemies_.erase(newEnd, enemies_.end());
 
 	if (enemies_.empty()) {
@@ -143,13 +135,8 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 	// Refresh battle state before crafting and scanning.
 	const bool allNotChasing = std::all_of(
 		enemies_.begin(), enemies_.end(),
-		[](const Enemy& e) { return !e.isChasing(); }
-	);
+		[](const Enemy& e) { return !e.isChasing(); });
 
-	//语法：•	[] —— 捕获列表,空表示不捕获任何外部变量
-	//•(const Enemy& e) —— 参数, all_of 会依次把每个敌人传进来
-	//•{ return !e.isChasing(); } —— 函数体, 返回"该敌人没有在追"这个布尔值
-	//对 enemies 里的每个敌人 e,判断 !e.isChasing();如果所有敌人都满足(即都不在追),allNotChasing 就是 true。
 	if (!allNotChasing) {
 		player_.setInBattle(true);
 		player_.resetOutBattleRemainingSeconds();
@@ -176,7 +163,7 @@ GameState GameSession::update(double elapsedSeconds, const SessionInput& input) 
 	if (input.scan &&
 		!scanController_.tryScanManually(player_, map_, config_.manualScanIntervalSeconds, enemies_)) {
 		frameFeedback = player_.isInBattle() ? ActionFeedback::ScanAutomaticInBattle
-		                                   : ActionFeedback::ScanCoolingDown;
+											 : ActionFeedback::ScanCoolingDown;
 	}
 
 	if (input.craftMolotov || input.craftDecoyMine || input.scan) {

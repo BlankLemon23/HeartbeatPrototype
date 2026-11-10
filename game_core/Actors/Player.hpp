@@ -5,69 +5,67 @@
 
 // Keep levels ordered so a smaller value means a lower health band.
 enum class HpLevel {
-    Dead,
-    Low,
-    Medium,
-    High
+	Dead,
+	Low,
+	Medium,
+	High
 };
-//等级从上到下的顺序是 Dead < Low < Medium < High，
-// 所以可以直接用 < 比较。也就是等于说，Dead 的值最小，High 的值最大。
 
 enum class Direction {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT
+	UP,
+	DOWN,
+	LEFT,
+	RIGHT
 };
 
 struct PlayerConfig {
-    int maxHealth = 100;
-    double normalMoveIntervalSeconds = 0.5;
-    double stealthMoveIntervalSeconds = 1.0;
-    double outBattleIntervalSeconds = 2.0;
-    int lowHealthThresholdPercent = 20;
-    int mediumHealthThresholdPercent = 60;
+	int maxHealth;
+	double normalMoveIntervalSeconds;
+	double stealthMoveIntervalSeconds;
+	double outBattleIntervalSeconds;
+	int lowHealthThresholdPercent;
+	int mediumHealthThresholdPercent;
 };
 
 class Player {
 public:
-    explicit Player(Position startPosition, PlayerConfig config);
+	explicit Player(Position startPosition, PlayerConfig config);
 
-    bool tryMove(Direction direction, const Map& map);
-    void updateMoveCooldown(double elapsedSeconds);
-    double getMoveCooldownRemainingSeconds() const;
+	bool tryMove(Direction direction, const Map& map);
+	void updateMoveCooldown(double elapsedSeconds);
+	double getMoveCooldownRemainingSeconds() const;
 
-    Position getPosition() const; //const在末尾表示不会修改成员变量
-    void setPosition(Position newPosition);
+	Position getPosition() const;
+	void setPosition(Position newPosition);
 
-    int getHealth() const;
-    int getMaxHealth() const;
-    void setHealth(int health);
-    HpLevel getHpLevel() const;
+	int getHealth() const;
+	int getMaxHealth() const;
+	void setHealth(int health);
+	HpLevel getHpLevel() const;
 
-    bool isInBattle() const;
-    void setInBattle(bool isInBattle);
-    bool wasInBattle() const;
-    void setWasInBattle(bool wasInBattle);
+	bool isInBattle() const;
+	void setInBattle(bool isInBattle);
+	bool wasInBattle() const;
+	void setWasInBattle(bool wasInBattle);
 
-    void toggleStealth();
-    bool isStealthEnabled() const;
+	void toggleStealth();
+	bool isStealthEnabled() const;
 
-    double getOutBattleRemainingSeconds() const;
-    void updateOutBattleRemainingSeconds(double elapsedSeconds);
-    void resetOutBattleRemainingSeconds();
+	double getOutBattleRemainingSeconds() const;
+	void updateOutBattleRemainingSeconds(double elapsedSeconds);
+	void resetOutBattleRemainingSeconds();
 
-    void takeDamage(int damage);
+	void takeDamage(int damage);
 
 private:
-    // Fixed settings are separate from the state that changes each frame.
-    PlayerConfig config_;
+	// Fixed settings are separate from the state that changes each frame.
+	PlayerConfig config_;
 
-    Position position_; //成员变量用_结尾
-    int health_;
-    double moveCooldownRemainingSeconds_ = 0.0;
-    double outBattleRemainingSeconds_;
-    bool isInBattle_ = false;
-    bool wasInBattle_ = false;
-    bool stealthEnabled_ = false;
+	Position position_;
+	int health_;
+	double moveCooldownRemainingSeconds_ = 0.0;
+	double outBattleRemainingSeconds_;
+	bool isInBattle_ = false;
+	bool wasInBattle_ = false;
+	bool stealthEnabled_ = false;
 };

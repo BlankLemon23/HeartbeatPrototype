@@ -9,14 +9,13 @@ class Enemy;
 
 // Positive intervals in seconds; supplied by the caller as one configuration.
 struct BattleScanConfig {
-    double highHealthIntervalSeconds = 3.0;
-    double mediumHealthIntervalSeconds = 2.0;
-    double lowHealthIntervalSeconds = 1.2;
+	double highHealthIntervalSeconds;
+	double mediumHealthIntervalSeconds;
+	double lowHealthIntervalSeconds;
 };
 
 class ScanController {
 public:
-
 	void updateScanTime(double elapsedSeconds);
 	void updateSnapshotRemainingSeconds(double elapsedSeconds);
 	const std::vector<Position>& getEnemySnapshotPositions() const;
@@ -39,5 +38,5 @@ private:
 	std::vector<Position> enemySnapshotPositions_;
 	double enemySnapshotRemainingSeconds_ = 0.0;
 	double enemySnapshotDurationSeconds_;
-	std::optional<HpLevel> previousHpLevel_;// std::optional 用于表示可能没有值的情况，previousHpLevel_ 记录上一帧的血量等级 第一帧可能没有上一挡位
+	std::optional<HpLevel> previousHpLevel_;
 };

@@ -1,21 +1,16 @@
 #include "Molotov.hpp"
-#include "Molotov.hpp"
-#include "Molotov.hpp"
-#include "Molotov.hpp"
 #include "Throwing.hpp"
 #include <stdexcept>
 #include <algorithm>
 Molotov::Molotov(MolotovConfig config)
 	: config_(config),
-	  remainingCount_(std::clamp(config.initialCount, 0, std::max(0, config.carryLimit)))
-{
+	  remainingCount_(std::clamp(config.initialCount, 0, std::max(0, config.carryLimit))) {
 	if (config_.damageIntervalSeconds <= 0) {
 		throw std::invalid_argument("damageIntervalSeconds must be positive");
 	}
 }
 
-int Molotov::getRemainingCount() const
-{
+int Molotov::getRemainingCount() const {
 	return remainingCount_;
 }
 
@@ -30,14 +25,11 @@ bool Molotov::tryThrow(Position playerPosition, Position clickedPosition, const 
 	remainingCount_ -= 1;
 	return true;
 }
-void Molotov::updateBurningArea(double elapsedSeconds,Player& player, std::vector<Enemy>& enemies,const Map& map) {
+void Molotov::updateBurningArea(double elapsedSeconds, Player& player, std::vector<Enemy>& enemies, const Map& map) {
 	for (BurningArea& area : burningAreas_) {
-
-		//activeSeconds 这一帧实际燃烧时间
 		const double activeSeconds = std::min(elapsedSeconds, area.remainingSeconds);
 		area.remainingSeconds -= activeSeconds;
 		area.secondsUntilNextDamage -= activeSeconds;
-		//使用while的原因 一帧可能跨越多个伤害周期
 
 		const double timeToleranceSeconds = 1e-9;
 		while (area.secondsUntilNextDamage <= timeToleranceSeconds) {
@@ -48,19 +40,13 @@ void Molotov::updateBurningArea(double elapsedSeconds,Player& player, std::vecto
 	}
 	const auto newEnd = std::remove_if(
 		burningAreas_.begin(), burningAreas_.end(),
-		[](const BurningArea& area) { return area.remainingSeconds <= 0; }
-	);
+		[](const BurningArea& area) { return area.remainingSeconds <= 0; });
 	burningAreas_.erase(
 		newEnd,
-		burningAreas_.end()
-	);
+		burningAreas_.end());
 }
 
-
-
-
-std::vector<Position> Molotov::getBurningCells() const
-{
+std::vector<Position> Molotov::getBurningCells() const {
 	std::vector<Position> cells;
 	for (const BurningArea& area : burningAreas_) {
 		cells.insert(cells.end(), area.burningCells.begin(), area.burningCells.end());
@@ -68,21 +54,15 @@ std::vector<Position> Molotov::getBurningCells() const
 	return cells;
 }
 
-
-
-
 void Molotov::createBurningArea(Position landingPosition, const Map& map) {
 	burningAreas_.push_back(BurningArea{
 		landingPosition,
 		config_.burnDurationSeconds,
 		config_.damageIntervalSeconds,
-		collectBurningCells(landingPosition,map)
-		});
-
+		collectBurningCells(landingPosition, map)});
 }
 
-std::vector<Position> Molotov::collectBurningCells(Position center, const Map& map) const
-{
+std::vector<Position> Molotov::collectBurningCells(Position center, const Map& map) const {
 	std::vector<Position> cells;
 	const int radius = config_.burnRadiusCells;
 	for (int rowOffset = -radius; rowOffset <= radius; ++rowOffset) {
@@ -90,8 +70,8 @@ std::vector<Position> Molotov::collectBurningCells(Position center, const Map& m
 			if (rowOffset * rowOffset + columnOffset * columnOffset > radius * radius) {
 				continue;
 			}
-			Position current = { center.row + rowOffset,center.column + columnOffset };
-			if (map.hasLineOfSight(center,current)) {
+			Position current = {center.row + rowOffset, center.column + columnOffset};
+			if (map.hasLineOfSight(center, current)) {
 				cells.push_back(current);
 			}
 		}
@@ -99,28 +79,23 @@ std::vector<Position> Molotov::collectBurningCells(Position center, const Map& m
 	return cells;
 }
 
-void Molotov::burnPlayer(Player& player,const BurningArea& area, const Map& map)
-{
-	if (ifInstanceInsideBurningArea(player.getPosition(), area.burningCenter)
-		&&
-		map.hasLineOfSight(player.getPosition(),area.burningCenter)) {
+void Molotov::burnPlayer(Player& player, const BurningArea& area, const Map& map) {
+	if (ifInstanceInsideBurningArea(player.getPosition(), area.burningCenter) &&
+		map.hasLineOfSight(player.getPosition(), area.burningCenter)) {
 		player.takeDamage(config_.burnDamagePlayer);
 	}
 }
 
-void Molotov::burnEnemy(std::vector<Enemy>& enemies,const BurningArea& area,const Map& map)
-{
+void Molotov::burnEnemy(std::vector<Enemy>& enemies, const BurningArea& area, const Map& map) {
 	for (Enemy& enemy : enemies) {
-		if (ifInstanceInsideBurningArea(enemy.getPosition(), area.burningCenter)
-			&&
-			map.hasLineOfSight(enemy.getPosition(),area.burningCenter)){
+		if (ifInstanceInsideBurningArea(enemy.getPosition(), area.burningCenter) &&
+			map.hasLineOfSight(enemy.getPosition(), area.burningCenter)) {
 			enemy.takeDamage(config_.burnDamageEnemy);
 		}
 	}
 }
 
-bool Molotov::ifInstanceInsideBurningArea(Position instancePosition,Position burningCenter)
-{
+bool Molotov::ifInstanceInsideBurningArea(Position instancePosition, Position burningCenter) {
 	int distance = calculateSquaredDistanceToTarget(instancePosition, burningCenter);
 	if (distance <= config_.burnRadiusCells * config_.burnRadiusCells) {
 		return true;
@@ -128,18 +103,14 @@ bool Molotov::ifInstanceInsideBurningArea(Position instancePosition,Position bur
 	return false;
 }
 
-
-std::vector<Position> Molotov::findValidThrowCells(Position playerPosition, const Map& map) const
-{
+std::vector<Position> Molotov::findValidThrowCells(Position playerPosition, const Map& map) const {
 	return collectValidThrowCells(playerPosition, config_.throwRadiusCells, map);
 }
 
-void Molotov::addMolotov(int amount)
-{
+void Molotov::addMolotov(int amount) {
 	remainingCount_ += amount;
 }
 
-int Molotov::getCarryLimit() const
-{
+int Molotov::getCarryLimit() const {
 	return config_.carryLimit;
 }

@@ -8,7 +8,8 @@
 #include "Weapons/Gun.hpp"
 #include <algorithm>
 
-GameRenderer::GameRenderer(RendererConfig config) : config_(config) {}
+GameRenderer::GameRenderer(RendererConfig config) : config_(config) {
+}
 
 void GameRenderer::drawWorld(const Map& map, const Molotov& molotov,
 	const ResourceManager& resources) const {
@@ -50,28 +51,8 @@ void GameRenderer::drawFire(const Molotov& molotov) const {
 	const int cellSize = config_.cellSizePixels;
 	// Draw each covered cell once so overlapping areas keep the same opacity.
 
-	std::vector<Position> burningCells = molotov.getBurningCells();//按值传递 因为后面不能动molotov里的数据
+	std::vector<Position> burningCells = molotov.getBurningCells();
 
-	// 先排序，再去重，避免同一格被重复绘制，导致半透明火焰颜色加深。
-	//
-	// std::sort(begin, end, 比较规则)：对 [begin, end) 范围内的元素排序。
-	// begin() 指向起始元素，end() 指向末尾之后，不属于有效元素。
-	//
-	// [](const Position& left, const Position& right) { ... } 是 lambda 表达式：
-	// []：不捕获外部变量。
-	// const Position&：只读引用，比较时不复制、不修改位置。
-	// 返回 true：表示 left 应排在 right 前面。
-	// 比较规则：行号小的在前；行号相同时，列号小的在前。
-	// 排序后，相同位置就会挨在一起。
-	//
-	// std::unique(begin, end)：使用 Position 的 operator== 判断相邻位置是否相同。
-	// 它将不重复的元素整理到前部，返回“有效部分末尾之后”的迭代器。
-	// 注意：unique 不会缩短 vector，尾部内容不应再使用。
-	//
-	// erase(unique(...), end())：先执行 unique，再删除其返回位置到原末尾的部分。
-	// 相当于：
-	// const auto newEnd = std::unique(burningCells.begin(), burningCells.end());
-	// burningCells.erase(newEnd, burningCells.end());
 	std::sort(burningCells.begin(), burningCells.end(),
 		[](const Position& left, const Position& right) {
 			return left.row < right.row ||
@@ -82,8 +63,7 @@ void GameRenderer::drawFire(const Molotov& molotov) const {
 	for (const Position cell : burningCells) {
 		const Vector2 screenCenter{
 			(cell.column + 0.5f) * cellSize,
-			(cell.row + 0.5f) * cellSize
-		};
+			(cell.row + 0.5f) * cellSize};
 		DrawCircleV(screenCenter, cellSize * config_.fireRadiusInCells, config_.fireColor);
 	}
 }
@@ -125,9 +105,9 @@ void GameRenderer::drawStealthDetectionRange(Position center, int radiusCells) c
 
 	// Include one off-screen cell so the window edge does not form a false outline.
 	for (int row = std::max(-1, center.row - rowRadius);
-		 row <= std::min(screenRows, center.row + rowRadius); ++row) {
+		row <= std::min(screenRows, center.row + rowRadius); ++row) {
 		for (int column = std::max(-1, center.column - columnRadius);
-			 column <= std::min(screenColumns, center.column + columnRadius); ++column) {
+			column <= std::min(screenColumns, center.column + columnRadius); ++column) {
 			const double rowDistance = static_cast<double>(row) - center.row;
 			const double columnDistance = static_cast<double>(column) - center.column;
 			if (rowDistance * rowDistance + columnDistance * columnDistance <= radiusSquared) {
@@ -142,36 +122,24 @@ void GameRenderer::drawRangeOutline(const std::vector<Position>& cells) const {
 	const int cellSize = config_.cellSizePixels;
 	const auto containsCell = [&cells](Position cell) {
 		return std::find(cells.begin(), cells.end(), cell) != cells.end();
-		};
-	//参数	这里传的	含义
-	//first	cells.begin()	搜索起点（含）
-	//	last	cells.end()	搜索终点（不含）
-	//	value	cell	要找的值
-	//	返回值：找到就返回指向该元素的迭代器，找不到就返回 last（也就是 cells.end()）。
-	//	所以 != cells.end() 就是“找到了”。整个表达式是“cell 在不在 cells 里”。
-	//
-	// 捕获不是“从某行到某行”的文本区间，而是“lambda 定义点之前、在包围作用域里可见的变量”。
-	//
+	};
 	// Shared edges are inside the range; only exposed edges form its outline.
 	for (const Position cell : cells) {
 		const float left = static_cast<float>(cell.column * cellSize);
 		const float top = static_cast<float>(cell.row * cellSize);
-		//行 列乘以格子大小得到是左上角坐标
 		const float right = left + cellSize;
 		const float bottom = top + cellSize;
-		if (!containsCell({ cell.row - 1, cell.column })) {
-			//上邻居不在时
-			DrawLineEx({ left, top }, { right, top }, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
+		if (!containsCell({cell.row - 1, cell.column})) {
+			DrawLineEx({left, top}, {right, top}, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
 		}
-		if (!containsCell({ cell.row + 1, cell.column })) {
-			//下邻居
-			DrawLineEx({ left, bottom }, { right, bottom }, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
+		if (!containsCell({cell.row + 1, cell.column})) {
+			DrawLineEx({left, bottom}, {right, bottom}, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
 		}
-		if (!containsCell({ cell.row, cell.column - 1 })) {
-			DrawLineEx({ left, top }, { left, bottom }, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
+		if (!containsCell({cell.row, cell.column - 1})) {
+			DrawLineEx({left, top}, {left, bottom}, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
 		}
-		if (!containsCell({ cell.row, cell.column + 1 })) {
-			DrawLineEx({ right, top }, { right, bottom }, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
+		if (!containsCell({cell.row, cell.column + 1})) {
+			DrawLineEx({right, top}, {right, bottom}, config_.throwPreviewLineThicknessPixels, config_.throwPreviewColor);
 		}
 	}
 }
@@ -180,12 +148,10 @@ void GameRenderer::drawAimLine(Position playerPosition, GridPoint edgePosition) 
 	const int cellSize = config_.cellSizePixels;
 	const Vector2 rayStart{
 		(playerPosition.column + 0.5f) * cellSize,
-		(playerPosition.row + 0.5f) * cellSize
-	};
+		(playerPosition.row + 0.5f) * cellSize};
 	const Vector2 rayEnd{
 		static_cast<float>(edgePosition.column * cellSize),
-		static_cast<float>(edgePosition.row * cellSize)
-	};
+		static_cast<float>(edgePosition.row * cellSize)};
 	// This is the maximum-range guide; terrain blocking belongs to hit detection.
 	DrawLineEx(rayStart, rayEnd, config_.aimLineThicknessPixels, config_.aimLineColor);
 }
@@ -265,8 +231,7 @@ void GameRenderer::drawActionFeedback(ActionFeedback feedback) const {
 		(width - textSize.x) / 2.0f - padding,
 		height - textSize.y - 3.0f * padding,
 		textSize.x + 2.0f * padding,
-		textSize.y + 2.0f * padding
-	};
+		textSize.y + 2.0f * padding};
 	DrawRectangleRec(background, Fade(BLACK, 0.85f));
 	DrawTextEx(font, message, {background.x + padding, background.y + padding}, fontSize, spacing, WHITE);
 }
@@ -302,7 +267,7 @@ void GameRenderer::drawResultInterface(const char* title, Color background, Colo
 		const Vector2 textSize = MeasureTextEx(font, text, fontSize, spacing);
 		DrawTextEx(font, text,
 			{area.x + (area.width - textSize.x) / 2.0f,
-			 area.y + (area.height - textSize.y) / 2.0f},
+				area.y + (area.height - textSize.y) / 2.0f},
 			fontSize, spacing, color);
 	};
 
@@ -321,4 +286,3 @@ void GameRenderer::drawResultInterface(const char* title, Color background, Colo
 	drawButton(buttons.restart, "Restart");
 	drawButton(buttons.quit, "Quit");
 }
-

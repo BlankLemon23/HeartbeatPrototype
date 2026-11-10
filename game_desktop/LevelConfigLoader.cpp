@@ -86,9 +86,18 @@ static ConfigSections readSections(std::istream& file) {
 	return sections;
 }
 
-static ConfigSection takeSection(ConfigSections& sections, const std::string& name) {
+enum class ConfigMode {
+	Required,
+	Override
+};
+
+static ConfigSection takeSection(ConfigSections& sections, const std::string& name,
+	ConfigMode mode = ConfigMode::Required) {
 	const auto entry = sections.find(name);
 	if (entry == sections.end()) {
+		if (mode == ConfigMode::Required) {
+			throw configError(0, "[" + name + "]", "Missing required section.");
+		}
 		return {};
 	}
 	ConfigSection section = std::move(entry->second);
@@ -106,8 +115,7 @@ static T parseNumber(const ConfigLine& value, const std::string& location, doubl
 	}
 	input >> std::ws;
 	if (!input.eof() || !std::isfinite(number) || number < min || number > max) {
-		throw configError(value.number, location, "Expected a number from " +
-			std::to_string(min) + " to " + std::to_string(max) + ".");
+		throw configError(value.number, location, "Expected a number from " + std::to_string(min) + " to " + std::to_string(max) + ".");
 	}
 	return number;
 }
@@ -124,8 +132,9 @@ static std::vector<std::string> splitValues(const std::string& text) {
 
 class ConfigOptions {
 public:
-	ConfigOptions(ConfigSections& sections, const std::string& name) : location_("[" + name + "]") {
-		const ConfigSection section = takeSection(sections, name);
+	ConfigOptions(ConfigSections& sections, const std::string& name, ConfigMode mode = ConfigMode::Required)
+		: location_("[" + name + "]"), mode_(mode) {
+		const ConfigSection section = takeSection(sections, name, mode);
 		headerLine_ = section.headerLine;
 		for (const ConfigLine& line : section.lines) {
 			const auto separator = line.text.find('=');
@@ -200,6 +209,9 @@ private:
 	std::optional<ConfigLine> take(const char* key) {
 		const auto entry = values_.find(key);
 		if (entry == values_.end()) {
+			if (mode_ == ConfigMode::Required) {
+				throw configError(headerLine_, location_, "Missing required key '" + std::string(key) + "'.");
+			}
 			return std::nullopt;
 		}
 		ConfigLine value = std::move(entry->second);
@@ -208,6 +220,7 @@ private:
 	}
 
 	std::string location_;
+	ConfigMode mode_;
 	int headerLine_ = 0;
 	std::map<std::string, ConfigLine> values_;
 };
@@ -249,8 +262,9 @@ static void readPlayer(ConfigSections& sections, GameSessionConfig& session) {
 	options.require(isFloor(session.mapConfig, session.playerStart), "Player spawn must be on a floor cell.");
 }
 
-static void readEnemyOptions(ConfigSections& sections, const std::string& name, EnemyConfig& enemy) {
-	ConfigOptions options(sections, name);
+static void readEnemyOptions(ConfigSections& sections, const std::string& name, EnemyConfig& enemy,
+	ConfigMode mode = ConfigMode::Required) {
+	ConfigOptions options(sections, name, mode);
 	options.number("startingHealth", enemy.startingHealth, 1, maxCount);
 	options.number("moveIntervalSeconds", enemy.moveIntervalSeconds, minIntervalSeconds, maxIntervalSeconds);
 	options.number("wanderIntervalSeconds", enemy.wanderIntervalSeconds, minIntervalSeconds, maxIntervalSeconds);
@@ -274,9 +288,6 @@ static void readEnemies(ConfigSections& sections, GameSessionConfig& session) {
 	EnemyConfig defaults{};
 	readEnemyOptions(sections, "enemy_defaults", defaults);
 	const ConfigSection section = takeSection(sections, "enemies");
-	if (section.headerLine == 0) {
-		throw configError(0, "[enemies]", "Expected an enemies section. It may be empty.");
-	}
 	for (const ConfigLine& line : section.lines) {
 		const auto fields = splitValues(line.text);
 		if (fields.size() < 2 || fields.size() > 3) {
@@ -290,7 +301,8 @@ static void readEnemies(ConfigSections& sections, GameSessionConfig& session) {
 			spawn.config.startingHealth = parseNumber<int>(
 				{line.number, fields[2]}, "[enemies] startingHealth", 1, maxCount);
 		}
-		readEnemyOptions(sections, "enemy." + std::to_string(session.enemySpawns.size()), spawn.config);
+		readEnemyOptions(sections, "enemy." + std::to_string(session.enemySpawns.size()),
+			spawn.config, ConfigMode::Override);
 		session.enemySpawns.push_back(spawn);
 	}
 }
@@ -360,10 +372,6 @@ template <typename Pack>
 static void readPacks(ConfigSections& sections, const char* name, const MapConfig& map,
 	std::vector<Pack>& packs) {
 	const ConfigSection section = takeSection(sections, name);
-	if (section.headerLine == 0) {
-		return;
-	}
-	packs.clear();
 	const std::string location = "[" + std::string(name) + "]";
 	long long total = 0;
 	for (const ConfigLine& line : section.lines) {
