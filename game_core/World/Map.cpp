@@ -88,92 +88,103 @@ bool Map::blocksLineOfSight(Position cell, SightMode mode) const {
 	return isScanned(cell.row, cell.column);
 }
 
-Map::LineTraceResult Map::traceLine(Position start, GridPoint target, SightMode mode,
+Map::LineTraceResult Map::traceLine(Position startCell, GridPoint targetPoint, SightMode mode,
 	const std::vector<Enemy>& enemies) const {
-	if (classifyCell(start.row, start.column) == CellType::OutOfBounds) {
-		return {start, false};
+	LineTraceResult result;
+	result.lastFreeCell = startCell;
+	result.targetVisible = false;
+
+	if (classifyCell(startCell.row, startCell.column) == CellType::OutOfBounds) {
+		return result;
 	}
 
-	const double startCenterRow = start.row + 0.5;
-	const double startCenterColumn = start.column + 0.5;
-	const double rowDistance = std::abs(target.row - startCenterRow);
-	const double columnDistance = std::abs(target.column - startCenterColumn);
+	const double startCenterRow = startCell.row + 0.5;
+	const double startCenterColumn = startCell.column + 0.5;
+	const double rowDistance = std::abs(targetPoint.row - startCenterRow);
+	const double columnDistance = std::abs(targetPoint.column - startCenterColumn);
 	const Position targetCell{
-		static_cast<int>(std::floor(target.row)),
-		static_cast<int>(std::floor(target.column))};
-	const double neverCross = std::numeric_limits<double>::infinity();
-	const double cornerTolerance = 1e-12;
+		static_cast<int>(std::floor(targetPoint.row)),
+		static_cast<int>(std::floor(targetPoint.column))};
 
 	int rowStep = 0;
-	if (target.row > startCenterRow) {
+	if (targetPoint.row > startCenterRow) {
 		rowStep = 1;
 	}
-	else if (target.row < startCenterRow) {
+	else if (targetPoint.row < startCenterRow) {
 		rowStep = -1;
 	}
 	int columnStep = 0;
-	if (target.column > startCenterColumn) {
+	if (targetPoint.column > startCenterColumn) {
 		columnStep = 1;
 	}
-	else if (target.column < startCenterColumn) {
+	else if (targetPoint.column < startCenterColumn) {
 		columnStep = -1;
 	}
 
-	double nextRowProgress = neverCross;
-	double rowProgressStep = neverCross;
+	const double neverCross = std::numeric_limits<double>::infinity();
+	const double progressTolerance = 1e-12;
+
+	double nextRowBoundaryProgress = neverCross;
+	double rowProgressPerCell = neverCross;
 	if (rowDistance > 0.0) {
-		nextRowProgress = 0.5 / rowDistance;
-		rowProgressStep = 1.0 / rowDistance;
+		nextRowBoundaryProgress = 0.5 / rowDistance;
+		rowProgressPerCell = 1.0 / rowDistance;
 	}
-	double nextColumnProgress = neverCross;
-	double columnProgressStep = neverCross;
+	double nextColumnBoundaryProgress = neverCross;
+	double columnProgressPerCell = neverCross;
 	if (columnDistance > 0.0) {
-		nextColumnProgress = 0.5 / columnDistance;
-		columnProgressStep = 1.0 / columnDistance;
+		nextColumnBoundaryProgress = 0.5 / columnDistance;
+		columnProgressPerCell = 1.0 / columnDistance;
 	}
 
-	Position current = start;
+	Position currentCell = startCell;
 	while (true) {
-		// Inspect every enemy at this cell before advancing the ray once.
+		result.lastFreeCell = currentCell;
+
 		for (const Enemy& enemy : enemies) {
-			if (enemy.getPosition() == current) {
-				return {current, current == targetCell, current};
+			if (enemy.getPosition() == currentCell) {
+				result.firstEnemyPosition = currentCell;
+				result.targetVisible = currentCell == targetCell;
+				return result;
 			}
 		}
 
-		// Progress 1 is the exact endpoint, even when it is outside the map.
-		const double nextBoundaryProgress = std::min(nextRowProgress, nextColumnProgress);
-		if (nextBoundaryProgress > 1.0 + cornerTolerance) {
-			return {current, true};
+		if (currentCell == targetCell) {
+			result.targetVisible = true;
+			return result;
 		}
 
-		Position next = current;
-		if (std::abs(nextRowProgress - nextColumnProgress) <= cornerTolerance) {
-			// A wall touching the ray at a grid corner blocks cells behind it.
-			if (blocksLineOfSight({current.row + rowStep, current.column}, mode) ||
-				blocksLineOfSight({current.row, current.column + columnStep}, mode)) {
-				return {current, false};
+		// Advance a candidate cell, then check it before accepting it as currentCell.
+		Position nextCell = currentCell;
+		if (std::abs(nextRowBoundaryProgress - nextColumnBoundaryProgress) <= progressTolerance) {
+			const Position rowNeighbor{currentCell.row + rowStep, currentCell.column};
+			const Position columnNeighbor{currentCell.row, currentCell.column + columnStep};
+
+			// Either side of a touched corner can block the ray.
+			if (blocksLineOfSight(rowNeighbor, mode) || blocksLineOfSight(columnNeighbor, mode)) {
+				return result;
 			}
-			next.row += rowStep;
-			next.column += columnStep;
-			nextRowProgress += rowProgressStep;
-			nextColumnProgress += columnProgressStep;
+			nextCell.row += rowStep;
+			nextCell.column += columnStep;
+			nextRowBoundaryProgress += rowProgressPerCell;
+			nextColumnBoundaryProgress += columnProgressPerCell;
 		}
-		else if (nextColumnProgress < nextRowProgress) {
-			next.column += columnStep;
-			nextColumnProgress += columnProgressStep;
+		else if (nextColumnBoundaryProgress < nextRowBoundaryProgress) {
+			nextCell.column += columnStep;
+			nextColumnBoundaryProgress += columnProgressPerCell;
 		}
 		else {
-			next.row += rowStep;
-			nextRowProgress += rowProgressStep;
+			nextCell.row += rowStep;
+			nextRowBoundaryProgress += rowProgressPerCell;
 		}
 
-		const CellType nextCell = classifyCell(next.row, next.column);
-		if (blocksLineOfSight(next, mode)) {
-			// A target wall is visible, while the landing cell stays before it.
-			return {current, next == targetCell && nextCell != CellType::OutOfBounds};
+		const CellType nextCellType = classifyCell(nextCell.row, nextCell.column);
+		if (blocksLineOfSight(nextCell, mode)) {
+			// The first wall is visible when it is the target, but the landing cell stays before it.
+			result.targetVisible = nextCell == targetCell && nextCellType != CellType::OutOfBounds;
+			return result;
 		}
-		current = next;
+		currentCell = nextCell;
 	}
 }
 

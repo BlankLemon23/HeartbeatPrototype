@@ -1,0 +1,57 @@
+gameprototype
+Windows play guide
+
+Extract the complete ZIP to a folder and open gameprototype.exe.
+Keep level.txt in the same folder as the executable.
+
+GOAL
+Survive and defeat all enemies. The pistol can handle an isolated patrol.
+Save ammo for stragglers or a distraction when you face a group.
+
+CONTROLS
+W / A / S / D   Move
+Left Shift      Toggle stealth
+Space           Scan while exploring
+Left mouse      Fire the pistol, or throw the selected item
+R               Reload
+V / B           Select or cancel Molotov / decoy mine
+1 / 2           Craft a Molotov / decoy mine
+Esc             Exit
+The result screen offers Restart and Quit.
+
+READ THE MAP
+- Scan to reveal terrain and supplies within line of sight. Revealed
+  terrain stays on the map. The scan reaches up to 11 cells. Yellow
+  squares show where enemies were at scan time. They disappear after
+  about one second.
+- The player square is blue in normal movement and purple in stealth.
+  Stealth slows movement and reduces enemy sight range from six cells
+  to three. The blue outline is a distance guide. Walls block sight.
+- Scans happen automatically in combat and become more frequent as
+  health falls. Break away until the HUD returns to EXPLORING before
+  trying to craft or scan manually.
+
+DRAW ENEMIES AWAY
+- This prototype is silent. An actual pistol shot still creates in-game
+  noise at your position, even when it misses or hits a wall. You can
+  spend a round to draw enemies within nine cells toward your old
+  position, then move. The red aim line shows maximum range. Walls
+  can stop the shot early.
+- A decoy mine creates one noise event as soon as it lands. Throw it
+  away from your route to pull patrols within ten cells toward it.
+  Noise can carry through walls. Enemies take walkable paths to it.
+  Enemies already chasing you ignore the distraction.
+- Scan from cover and give enemies time to converge. While they are
+  investigating, you can circle behind them to reach guarded supplies.
+
+BURN AND RESUPPLY
+- Throw a Molotov into the gathered group from a safe distance. Orange
+  cells show the fire area. Fire reaches up to four cells and damages
+  enemies and the player over time. Walls block the spread of fire.
+  After a successful throw, the next click fires the pistol again.
+- The throw outline uses terrain you have already scanned. If an
+  unscanned wall blocks the throw, the item lands before the wall.
+  Scanning the intended route first makes throws more predictable.
+- Walk over green M markers for materials and blue A markers for ammo.
+  Craft outside combat. A Molotov costs 3 materials and a decoy costs 2.
+  Save materials for the next group and reload in cover.

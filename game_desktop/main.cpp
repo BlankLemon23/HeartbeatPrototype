@@ -20,7 +20,7 @@ static RunResult runGame(GameSession& session, const RendererConfig& rendererCon
 	const int width = session.getMap().maxColumnCount() * cellSize;
 	const int height = session.getMap().rowCount() * cellSize;
 
-	std::string title = "HeartbeatPrototype";
+	std::string title = "gameprototype";
 
 	InitWindow(width, height, title.c_str());
 	SetTargetFPS(60);

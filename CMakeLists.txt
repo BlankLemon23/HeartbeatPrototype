@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(HeartbeatPrototype LANGUAGES CXX)
+project(gameprototype LANGUAGES CXX)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -30,23 +30,23 @@ if(MSVC)
     target_compile_options(game_core PUBLIC /utf-8)
 endif()
 
-add_executable(game_desktop
+add_executable(gameprototype
     game_desktop/main.cpp
     game_desktop/GameRenderer.cpp
     game_desktop/GameRenderer.hpp
     game_desktop/LevelConfigLoader.cpp
     game_desktop/LevelConfigLoader.hpp
 )
-target_link_libraries(game_desktop PRIVATE game_core raylib)
+target_link_libraries(gameprototype PRIVATE game_core raylib)
 
 add_custom_target(game_level_config
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:game_desktop>"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:gameprototype>"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/game_desktop/level.txt"
-        "$<TARGET_FILE_DIR:game_desktop>/level.txt"
+        "$<TARGET_FILE_DIR:gameprototype>/level.txt"
     VERBATIM
 )
-add_dependencies(game_desktop game_level_config)
+add_dependencies(gameprototype game_level_config)
 
 add_executable(game_tests game_tests/MapTests.cpp)
 target_link_libraries(game_tests PRIVATE game_core)
@@ -73,4 +73,4 @@ add_test(NAME map_rules COMMAND game_tests)
 add_test(NAME enemy_behavior COMMAND enemy_tests)
 add_test(NAME gun_behavior COMMAND gun_tests)
 
-set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT game_desktop)
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT gameprototype)

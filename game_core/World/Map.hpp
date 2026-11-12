@@ -48,7 +48,7 @@ private:
 	};
 
 	bool blocksLineOfSight(Position cell, SightMode mode) const;
-	LineTraceResult traceLine(Position start, GridPoint target, SightMode mode,
+	LineTraceResult traceLine(Position startCell, GridPoint targetPoint, SightMode mode,
 		const std::vector<Enemy>& enemies) const;
 
 	// Terrain data and the discovery state have different lifetimes.

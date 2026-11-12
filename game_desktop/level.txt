@@ -1,44 +1,67 @@
-# First-play balance pass, 2026-11-07. Coordinates are zero-based row column.
-# Every section and key below is required. Use empty sections for no enemies or packs.
+# Survival balance pass, 2026-11-10. Coordinates are zero-based row column.
+# Every main section and key is required. Use empty sections for no enemies or packs.
 # Optional [enemy.N] sections override selected values from [enemy_defaults].
-# Map: * = wall, . = floor. Main gateways are three cells wide.
-# The upper-left wall block keeps active gameplay below the fixed HUD.
+# Map: * = wall, . = floor. The upper-left walls keep gameplay clear of the HUD.
+# The lower service loop connects the west approach to the southeast yard.
 [map]
-******************************
-**********.....*.............*
-**********.....*.....**......*
-**********.....*.....**......*
-**********...................*
-*............................*
-*............................*
-*..............*.............*
-*..............*.............*
-******...*************...*****
-*..............*.............*
-*..............*.............*
-*..............*.............*
-*...**.......................*
-*...**.......................*
-*............................*
-*..............*...**........*
-*..............*...**........*
-*..............*.............*
-******************************
+******************************************
+***********.*..............*.............*
+***********.*....*.........*.............*
+***********.*....*.........*...**........*
+***********.*....*.........*...**........*
+***********.*.........***..*.............*
+*...........*..............*.............*
+*....**.....*..............*.............*
+*....**.....*............................*
+*........................................*
+*...................................**...*
+*......**.............***..*.*......**...*
+*......**...*.........***..*.*...........*
+****...************...**********...*******
+*.............*............*.............*
+*.............*............*.........**..*
+*...*****.....*...**.......*.........**..*
+*...*****.....*...**.......*.............*
+*.................**.......*...**........*
+*........................................*
+*........**..............................*
+*........**...*..........................*
+*........**...*......****..*.............*
+*..****.......*............*......**.....*
+*.............*............*......**.....*
+******************************************
 
-# One introductory patrol, two separate patrols, then a two-enemy encounter.
 [enemies]
-6 12
-5 24
-16 7
-14 23
-16 26
+# West approach: one introductory patrol.
+9 10
+# North loading hall: five patrols around a materials cache.
+3 15
+4 20
+6 23
+6 17
+7 21
+# Northeast storage: five patrols, with two behind the staggered cover.
+2 30
+2 37
+5 34
+6 38
+7 31
+# Southeast yard: six patrols, including two along the back wall.
+17 38
+18 34
+19 39
+21 37
+23 33
+23 38
+# South service loop: one wider patrol near the ammo route.
+20 21
 
 [session]
 initialState = playing
 
 [player]
-startRow = 6
-startColumn = 3
+startRow = 8
+startColumn = 2
 maxHealth = 100
 normalMoveIntervalSeconds = 0.30
 stealthMoveIntervalSeconds = 0.60
@@ -51,18 +74,21 @@ startingHealth = 90
 moveIntervalSeconds = 0.80
 wanderIntervalSeconds = 1.40
 attackIntervalSeconds = 2.0
-wanderingRadiusCells = 2
+wanderingRadiusCells = 1
 waitAfterLossSeconds = 2.0
 normalDetectionRadiusCells = 6
 stealthDetectionRadiusCells = 3
 stopChaseRadiusCells = 10
 attackDamage = 10
 
+[enemy.17]
+wanderingRadiusCells = 2
+
 [scan]
 initialScanCooldownSeconds = 0.0
-scanRadiusCells = 10.0
+scanRadiusCells = 11.0
 # Snapshots retain the scanned position while the actual enemy may move.
-enemySnapshotDurationSeconds = 0.8
+enemySnapshotDurationSeconds = 1.0
 manualScanIntervalSeconds = 1.5
 
 [battle_scan]
@@ -74,26 +100,26 @@ lowHealthIntervalSeconds = 1.0
 damagePerShot = 30
 rangeCells = 8
 fireIntervalSeconds = 0.4
-soundRadiusCells = 8
+soundRadiusCells = 9
 magazineCapacity = 6
-maxTotalAmmo = 24
+maxTotalAmmo = 15
 initialMagazineAmmo = 6
-initialReserveAmmo = 12
+initialReserveAmmo = 3
 reloadDurationSeconds = 1.5
 
 [molotov]
-throwRadiusCells = 8
-burnRadiusCells = 2
-burnDurationSeconds = 4.0
-damageIntervalSeconds = 1.0
+throwRadiusCells = 10
+burnRadiusCells = 4
+burnDurationSeconds = 4.5
+damageIntervalSeconds = 0.75
 burnDamageEnemy = 30
-burnDamagePlayer = 10
+burnDamagePlayer = 8
 carryLimit = 3
-initialCount = 2
+initialCount = 1
 
 [decoy_mine]
-throwRadiusCells = 8
-soundRadiusCells = 7
+throwRadiusCells = 10
+soundRadiusCells = 10
 carryLimit = 3
 initialCount = 1
 
@@ -101,24 +127,26 @@ initialCount = 1
 molotovMaterialCost = 3
 decoyMineMaterialCost = 2
 
-# Each supply line is row column amount. Pickups follow exploration routes.
+# Each supply line is row column amount.
 [ammo_packs]
-8 7 4
-5 20 4
-15 24 4
+16 11 3
+21 24 3
 
 [material_packs]
-7 4 3
-3 18 2
-11 7 3
-16 13 2
+# Early spare decoy and an optional backup Molotov on the west loop.
+11 4 2
+22 8 3
+# Each guarded cache pays for a Molotov and a decoy.
+2 20 5
+2 35 5
+16 33 5
 
 [renderer]
-# 30 columns x 20 rows at 32 pixels gives a 960 x 640 client area.
-cellSizePixels = 32
+# 42 columns x 26 rows at 26 pixels gives a 1092 x 676 client area.
+cellSizePixels = 26
 fireRadiusInCells = 0.5
-fireColor = 255 161 0 110
+fireColor = 255 161 0 155
 throwPreviewColor = 40 150 225 230
-throwPreviewLineThicknessPixels = 3.0
+throwPreviewLineThicknessPixels = 2.5
 aimLineColor = 230 41 55 150
 aimLineThicknessPixels = 2.0
