@@ -1,8 +1,7 @@
-# Survival balance pass, 2026-11-10. Coordinates are zero-based row column.
+# Coordinates are zero-based row column.
 # Every main section and key is required. Use empty sections for no enemies or packs.
 # Optional [enemy.N] sections override selected values from [enemy_defaults].
-# Map: * = wall, . = floor. The upper-left walls keep gameplay clear of the HUD.
-# The lower service loop connects the west approach to the southeast yard.
+# Map: * = wall, . = floor.
 [map]
 ******************************************
 ***********.*..............*.............*
@@ -32,28 +31,23 @@
 ******************************************
 
 [enemies]
-# West approach: one introductory patrol.
 9 10
-# North loading hall: five patrols around a materials cache.
 3 15
 4 20
 6 23
 6 17
 7 21
-# Northeast storage: five patrols, with two behind the staggered cover.
 2 30
 2 37
 5 34
 6 38
 7 31
-# Southeast yard: six patrols, including two along the back wall.
 17 38
 18 34
 19 39
 21 37
 23 33
 23 38
-# South service loop: one wider patrol near the ammo route.
 20 21
 
 [session]
@@ -129,20 +123,20 @@ decoyMineMaterialCost = 2
 
 # Each supply line is row column amount.
 [ammo_packs]
+11 6 2
+10 24 2
+15 34 2
 16 11 3
 21 24 3
 
 [material_packs]
-# Early spare decoy and an optional backup Molotov on the west loop.
-11 4 2
-22 8 3
-# Each guarded cache pays for a Molotov and a decoy.
-2 20 5
-2 35 5
-16 33 5
+11 4 1
+22 8 2
+2 20 3
+2 35 2
+16 33 2
 
 [renderer]
-# 42 columns x 26 rows at 26 pixels gives a 1092 x 676 client area.
 cellSizePixels = 26
 fireRadiusInCells = 0.5
 fireColor = 255 161 0 155
